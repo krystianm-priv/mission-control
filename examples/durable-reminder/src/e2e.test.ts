@@ -16,7 +16,12 @@ const invalidInput = {
 	message: "",
 };
 
-test("e2e: durable reminder happy path", async () => {
+test("e2e: durable reminder happy path (mocked timers)", async (t) => {
+	const mock = t.mock;
+
+	// ⏱️ fake timers
+	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+
 	const commander = new InMemoryCommander({
 		createMissionId: () => "reminder-1",
 		definitions: [durableReminderMission],
@@ -26,11 +31,10 @@ test("e2e: durable reminder happy path", async () => {
 
 	await mission.start(validInput);
 
-	// should be waiting on sleep
 	assert.equal(mission.status, "waiting");
 
-	// wait for sleep to pass
-	await new Promise((r) => setTimeout(r, 1100));
+	// ⏩ fast-forward time instead of waiting 1s
+	mock.timers.tick(1000);
 
 	await mission.waitForCompletion();
 
@@ -44,12 +48,14 @@ test("e2e: durable reminder happy path", async () => {
 	);
 
 	assert.equal(
-		(state.snapshot.ctx.events["send-reminder"]?.output as { sentTo: string }).sentTo,
+		(state.snapshot.ctx.events["send-reminder"]?.output as { sentTo: string })
+			.sentTo,
 		validInput.recipient,
 	);
 
 	assert.equal(
-		(state.snapshot.ctx.events["send-reminder"]?.output as { body: string }).body,
+		(state.snapshot.ctx.events["send-reminder"]?.output as { body: string })
+			.body,
 		validInput.message,
 	);
 });
@@ -70,7 +76,11 @@ test("e2e: invalid start input fails fast", async () => {
 	assert.equal(mission.status, "failed");
 });
 
-test("e2e: sleep actually delays execution", async () => {
+test("e2e: sleep is controlled by mocked time", async (t) => {
+	const mock = t.mock;
+
+	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+
 	const commander = new InMemoryCommander({
 		createMissionId: () => "reminder-3",
 		definitions: [durableReminderMission],
@@ -78,20 +88,20 @@ test("e2e: sleep actually delays execution", async () => {
 
 	const mission = commander.createMission(durableReminderMission);
 
-	const startTime = Date.now();
-
 	await mission.start(validInput);
 
 	assert.equal(mission.status, "waiting");
 
+	// not advanced yet → still waiting
+	mock.timers.tick(500);
+	assert.equal(mission.status, "waiting");
+
+	// complete remaining time
+	mock.timers.tick(500);
+
 	await mission.waitForCompletion();
 
-	const duration = Date.now() - startTime;
-
 	assert.equal(mission.status, "completed");
-
-	// should be at least ~1s (allow jitter)
-	assert.ok(duration >= 900);
 
 	const state = mission.inspect();
 
