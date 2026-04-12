@@ -1,7 +1,7 @@
 {
-	"name": "@mission-control/core",
+	"name": "@mission-control/sqlite-commander",
 	"version": "1.0.0-rc.1",
-	"description": "Typed mission definition DSL and shared runtime validation for Mission Control.",
+	"description": "SQLite-backed durable commander for Mission Control.",
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/index.js",
@@ -15,18 +15,19 @@
 	"files": [
 		"dist",
 		"!dist/**/*.test.*",
-		"README.md"
+		"README.md",
+		"src/migrations"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"check-types": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
-		"test": "sh -c 'node --test $(find dist -name \"*.test.js\" -print)'"
+		"test": "sh -c 'node --experimental-sqlite --test $(find dist -name \"*.test.js\" -print)'"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"zod": "^4.3.6"
+		"@mission-control/core": "workspace:*"
 	}
 }

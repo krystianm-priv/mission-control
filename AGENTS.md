@@ -4,7 +4,7 @@
 
 Use this file as the default operating manual for coding agents working in this repository.
 
-The goal is not to brainstorm. The goal is to ship `mission-control` v1 by executing `ROADMAP.md` task by task.
+The goal is to ship a truthful `mission-control` v1 release candidate whose next literal step is `npm publish`.
 
 Read these files first, in order:
 
@@ -18,20 +18,23 @@ Read these files first, in order:
 Ship a real TypeScript workflow runtime with:
 
 - `@mission-control/core`
-- `@mission-control/commander`
-- `@mission-control/postgres-commander`
+- `@mission-control/in-memory-commander`
+- `@mission-control/sqlite-commander`
 
 v1 must include:
 
 - typed mission definitions
+- runtime input validation
+- a real abstract `Commander` base class in `@mission-control/core`
 - a solid in-memory commander
-- a durable Postgres commander
+- a durable SQLite commander
 - retries
 - timers
-- multi-worker safety
 - inspection APIs
+- restart-safe local durability through SQLite
 
 v1 does **not** include workflow versioning for already-running missions.
+Postgres is **not** part of v1. It belongs to v1.1 and later.
 
 ## Hard boundaries
 
@@ -41,6 +44,7 @@ Do not do any of the following unless the roadmap explicitly requires it:
 - do not add visual builders
 - do not redesign the project into a generic BPM platform
 - do not add browser-first runtime support
+- do not leave singleton commander globals in the public API
 - do not sneak in large refactors unrelated to the current roadmap task
 - do not change the mission DSL philosophy into config-first JSON
 
@@ -51,8 +55,8 @@ Everything in this repo is in scope.
 Treat these areas as the primary product surface:
 
 - `packages/core`
-- `packages/commander`
-- `packages/postgres-commander`
+- `packages/in-memory-commander`
+- `packages/sqlite-commander`
 - `examples/*`
 - root docs (`README.md`, `ROADMAP.md`, `SOURCEMAP.md`, package READMEs)
 
@@ -101,19 +105,19 @@ Do not add `any` unless there is no practical alternative and the choice is loca
 
 The intended architecture is:
 
-- `core`: workflow definition DSL and shared model primitives
-- `commander`: shared runtime contracts and in-memory commander
-- `postgres-commander`: durable Postgres-backed runtime
+- `core`: mission DSL, shared types, validation helpers, retry/timer metadata, abstract commander base, runtime-neutral contracts
+- `in-memory-commander`: in-memory runtime implementation only
+- `sqlite-commander`: durable SQLite-backed runtime only
 
 Do not collapse these boundaries casually.
 
 ### 4. Shared engine first
 
-If logic is needed by both commanders, put it behind shared runtime contracts instead of duplicating it.
+If logic is needed by both commanders, put it in `@mission-control/core` behind runtime-neutral contracts instead of duplicating it.
 
-### 5. Postgres-specific logic stays Postgres-specific
+### 5. SQLite-specific logic stays SQLite-specific
 
-SQL, leasing, timers, persistence, and idempotency constraints specific to Postgres belong in `postgres-commander`, not in `core`.
+Schema, migrations, SQL, persistence, durable timers, recovery, and idempotency constraints specific to SQLite belong in `sqlite-commander`, not in `core`.
 
 ### 6. Do not over-design
 
@@ -125,7 +129,7 @@ Do not add speculative abstractions for imagined future backends.
 
 A roadmap task is not complete without tests appropriate to the change.
 
-Use focused unit tests for local logic and integration tests for Postgres durability, retries, timers, and worker coordination.
+Use focused unit tests for local logic and integration tests for SQLite durability, retries, timers, and restart/reload behavior.
 
 ### 8. Docs are part of the task
 
@@ -153,9 +157,8 @@ You may edit `ROADMAP.md` only to:
 - mark tasks complete
 - add narrowly scoped child tasks when a parent task is too large
 - clarify wording where the implementation revealed ambiguity
+- move Postgres work explicitly to v1.1 when v1 truth requires it
 
-Do not reorder milestones casually.
-Do not remove major release-bar items.
 Do not silently redefine v1.
 
 ## Preferred working pattern
@@ -189,11 +192,11 @@ End each session with exactly these sections:
 
 ## Notes on ambition
 
-The long-term ambition may be to compete with heavier workflow systems, but v1 succeeds only by shipping the roadmap honestly.
+v1 succeeds only by shipping the roadmap honestly.
 
 That means:
 
-- get the Postgres commander real
+- get the SQLite commander real
 - get the semantics clear
 - get the examples convincing
 - avoid architecture wandering

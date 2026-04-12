@@ -1,5 +1,5 @@
 {
-	"name": "order-fulfillment",
+	"name": "durable-reminder",
 	"version": "1.0.0-rc.1",
 	"private": true,
 	"type": "module",
@@ -7,11 +7,11 @@
 		"check-types": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
 		"test": "node --test",
-		"dev": "node --watch src/index.ts"
+		"dev": "node --experimental-sqlite --watch src/index.ts"
 	},
 	"dependencies": {
-		"@mission-control/in-memory-commander": "workspace:*",
 		"@mission-control/core": "workspace:*",
+		"@mission-control/sqlite-commander": "workspace:*",
 		"zod": "^4.3.6"
 	}
 }

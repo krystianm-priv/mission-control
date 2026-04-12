@@ -1,71 +1,76 @@
 # Mission Control
 
-Mission Control is a TypeScript workflow runtime built around typed mission definitions.
+Mission Control is a TypeScript workflow runtime for long-lived, typed missions.
 
-This repository now ships three workspace packages:
+The v1 release candidate ships three publishable packages:
 
-- `@mission-control/core`: the mission DSL, schema helpers, retry metadata, and timer metadata
-- `@mission-control/commander`: shared execution contracts, the reusable engine, and a tested `InMemoryCommander`
-- `@mission-control/postgres-commander`: the durable Postgres package surface, schema, migrations, serialization, store primitives, and leasing SQL
+- `@mission-control/core`
+- `@mission-control/in-memory-commander`
+- `@mission-control/sqlite-commander`
 
-## What v1 includes
+## What it ships today
 
 - typed mission definitions
-- runtime input validation for `start` and `signal`
+- runtime input validation for `start(...)` and `signal(...)`
 - sequential steps
 - external waits with `needTo(...)`
-- retry policies on steps
 - timer waits with `sleep(...)`
-- an inspection surface for mission snapshot, history, attempts, signals, and timers
-- a solid in-memory commander that acts as the semantic baseline
+- retry policies with backoff metadata
+- inspection APIs for mission snapshot, history, attempts, signals, and timers
+- an explicit abstract `Commander` base class in core
+- an in-memory runtime for tests and fast local execution
+- a durable SQLite runtime that persists state and resumes after reload
 
 ## What v1 does not include
 
 - workflow versioning for already-running missions
+- Postgres
 - adapters to Temporal, DBOS, RabbitMQ, or other workflow engines
-- visual workflow builders
-- browser-first runtime support
+- visual builders
+- browser-first runtimes
 
-## Package layout
+## Runtime packages
 
-```text
-packages/
-  core/
-    src/
-      index.ts
-      mission-definition.ts
-      schema.ts
-      errors.ts
-      retry-policy.ts
-      timer.ts
-      types.ts
-  commander/
-    src/
-      index.ts
-      contracts.ts
-      engine.ts
-      errors.ts
-      validation.ts
-      in-memory/
-      testing/
-  postgres-commander/
-    src/
-      index.ts
-      commander.ts
-      store.ts
-      worker.ts
-      leasing.ts
-      serialization.ts
-      migrations/
-      sql.ts
-```
+### `@mission-control/core`
+
+Owns:
+
+- the mission DSL
+- shared types and validation helpers
+- retry and timer metadata
+- the abstract `Commander` base class
+- runtime-neutral contracts and shared execution engine
+
+### `@mission-control/in-memory-commander`
+
+Owns:
+
+- the `InMemoryCommander` implementation
+- deterministic testing helpers
+
+### `@mission-control/sqlite-commander`
+
+Owns:
+
+- the `SQLiteCommander` implementation
+- schema bootstrap and migrations
+- durable persistence for waits, retries, timers, and inspection state
+- restart-safe local/dev durability using SQLite
+
+## Requirements
+
+- Node.js `22.11+`
+- `zod` in your app if you use Zod schemas
+
+`@mission-control/sqlite-commander` uses Node’s built-in experimental SQLite support.
+That means SQLite examples and tests run with `node --experimental-sqlite ...`.
 
 ## Quick start
 
 ```ts
 import { z } from "zod";
 import { m } from "@mission-control/core";
-import { InMemoryCommander } from "@mission-control/commander";
+import { InMemoryCommander } from "@mission-control/in-memory-commander";
 
 const approvalMission = m
 	.define("approval")
@@ -76,46 +81,64 @@ const approvalMission = m
 	.step("send-email", async ({ ctx }) => ({
 		sentTo: ctx.events.start.output.email,
 	}))
-	.needTo("receive-approval", z.strictObject({ approvedBy: z.string() }), {
-		timeout: { afterMs: 60_000, action: "fail" },
-	})
-	.sleep("cooldown", 5_000)
+	.needTo("receive-approval", z.strictObject({ approvedBy: z.string() }))
 	.end();
 
-const commander = new InMemoryCommander();
+const commander = new InMemoryCommander({
+	definitions: [approvalMission],
+});
 const mission = commander.createMission(approvalMission);
 
 await mission.start({ email: "ops@example.com" });
 await mission.signal("receive-approval", { approvedBy: "reviewer-1" });
-await mission.waitForCompletion();
 
 console.log(mission.inspect());
 ```
 
-## Validation commands
+## Durable SQLite example
 
-Run these from the repo root:
+```ts
+import { join } from "node:path";
+import { z } from "zod";
 
-```bash
-npm run build
-npm run check-types
-npm run test
+import { m } from "@mission-control/core";
+import { SQLiteCommander } from "@mission-control/sqlite-commander";
+
+const reminderMission = m
+	.define("reminder")
+	.start({
+		input: z.strictObject({ recipient: z.email(), message: z.string() }),
+		run: async ({ ctx }) => ctx.events.start.input,
+	})
+	.sleep("wait-before-send", 1_000)
+	.step("send-reminder", async ({ ctx }) => ({
+		sentTo: ctx.events.start.output.recipient,
+		body: ctx.events.start.output.message,
+	}))
+	.end();
+
+const commander = new SQLiteCommander({
+	databasePath: join(process.cwd(), "mission-control.sqlite"),
+	definitions: [reminderMission],
+});
+
+const mission = commander.createMission(reminderMission);
+await mission.start({
+	recipient: "hello@example.com",
+	message: "This mission survives process reloads through SQLite state.",
+});
+await mission.waitForCompletion();
 ```
 
-For the full local release gate:
+## Verification
 
 ```bash
 npm run release:check
+npm run release:pack
 ```
 
-## Postgres status
+## Examples
 
-The Postgres package now includes:
-
-- schema DDL
-- an initial migration
-- serialization helpers
-- store/query primitives
-- claim/leasing SQL for multi-worker execution
-
-What is still blocked in this environment is live database verification of the durable runtime: mission lifecycle persistence, crash-safe resume, retries, timers, and multi-worker execution against a real Postgres instance.
+- `examples/ask-user-for-review`
+- `examples/order-fulfillment`
+- `examples/durable-reminder`

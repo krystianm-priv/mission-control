@@ -1,9 +1,12 @@
-import { inMemoryCommander } from "@mission-control/commander";
+import { InMemoryCommander } from "@mission-control/in-memory-commander";
 import { orderFulfillmentMission } from "./mission-definition.ts";
 
-const mission = inMemoryCommander.createMission(orderFulfillmentMission);
+const commander = new InMemoryCommander({
+	definitions: [orderFulfillmentMission],
+});
+const mission = commander.createMission(orderFulfillmentMission);
 
-await mission.startMission({
+await mission.start({
 	orderId: "order-1001",
 	email: "buyer@example.com",
 	sku: "sku-apple-001",

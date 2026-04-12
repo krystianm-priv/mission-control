@@ -5,100 +5,100 @@
 ### Root
 
 - `README.md`
-  - v1 product README with package layout, quick start, and validation commands
+  - product README for the SQLite-based v1 story
 
 - `package.json`
   - npm workspace root
-  - root `build`, `check-types`, `test`, and `release:check` scripts
+  - release-oriented scripts for build, typecheck, test, and pack validation
 
 - `turbo.json`
-  - workspace task wiring for build, lint, typecheck, and test
+  - workspace task wiring
 
 - `tsconfig.base.json`
-  - shared compiler baseline for packages and examples
+  - shared TypeScript baseline
 
 ### `packages/core`
 
 Current role:
-- mission definition DSL
-- schema parsing helpers
+- mission DSL
+- shared types and validation helpers
 - retry and timer metadata
+- abstract `Commander` base class
+- runtime-neutral contracts and shared execution engine
 
 Important files:
 - `packages/core/src/mission-definition.ts`
-  - builder for `start`, `step`, `needTo`, `sleep`, `end`
+- `packages/core/src/commander.ts`
+- `packages/core/src/contracts.ts`
+- `packages/core/src/engine.ts`
 - `packages/core/src/schema.ts`
-  - runtime schema parsing and validation failure handling
-- `packages/core/src/retry-policy.ts`
-  - retry normalization and backoff calculation
-- `packages/core/src/timer.ts`
-  - timeout and timer metadata types
 
-### `packages/commander`
+### `packages/in-memory-commander`
 
 Current role:
-- shared runtime contracts and execution engine
-- in-memory commander
-- test fixtures for deterministic semantic testing
+- in-memory runtime implementation
+- deterministic test helpers
 
 Important files:
-- `packages/commander/src/contracts.ts`
-  - public runtime snapshot/history/inspection types
-- `packages/commander/src/engine.ts`
-  - shared execution loop, retries, timers, external waits, completion handling
-- `packages/commander/src/in-memory/commander.ts`
-  - public in-memory commander implementation
-- `packages/commander/src/testing/fixtures.ts`
-  - fake clock for deterministic timer/timeout tests
+- `packages/in-memory-commander/src/commander.ts`
+- `packages/in-memory-commander/src/testing/fixtures.ts`
+- `packages/in-memory-commander/src/commander.test.ts`
+  - implemented as `src/in-memory/commander.ts` and `src/in-memory/commander.test.ts`
 
-### `packages/postgres-commander`
+### `packages/sqlite-commander`
 
 Current role:
-- durable Postgres package surface
-- schema, migrations, serialization, store primitives, and leasing SQL
+- durable SQLite runtime implementation for v1
+- schema bootstrap and migrations
+- persistence, signals, timers, retries, and rehydration
 
 Important files:
-- `packages/postgres-commander/src/sql.ts`
-  - schema DDL and runnable mission claim SQL
-- `packages/postgres-commander/src/migrations/0001_init.ts`
-  - initial migration
-- `packages/postgres-commander/src/store.ts`
-  - storage-only query primitives
-- `packages/postgres-commander/src/serialization.ts`
-  - explicit JSON persistence format
-- `packages/postgres-commander/src/worker.ts`
-  - claim helper for worker loops
+- `packages/sqlite-commander/src/commander.ts`
+- `packages/sqlite-commander/src/store.ts`
+- `packages/sqlite-commander/src/schema.ts`
+- `packages/sqlite-commander/src/migrations/*`
+- `packages/sqlite-commander/src/*.test.ts`
 
-Main limitation:
-- end-to-end durable runtime execution still needs a real Postgres instance
+Operational note:
+- SQLite runtime and tests use Node’s built-in experimental SQLite support via `--experimental-sqlite`
 
-### `examples/ask-user-for-review`
+### `examples`
 
-Current role:
-- human-in-the-loop in-memory example using the public packages
-
-Important files:
-- `src/mission-definition.ts`
-  - canonical `needTo(...)` mission
-- `src/index.ts`
-  - starts, signals, waits for completion, prints inspection output
-
-### `examples/order-fulfillment`
-
-Current role:
-- longer sequential example with two external signals
-
-Important files:
-- `src/mission-definition.ts`
-  - start, step, wait, signal, completion flow
-- `src/index.ts`
-  - demonstrates public commander APIs and inspection
+Expected examples:
+- `ask-user-for-review`
+  - human-in-the-loop flow using the public packages
+- `order-fulfillment`
+  - sequential + signal flow using the public packages
+- `durable-reminder`
+  - SQLite-backed durability and timer/reload flow
 
 ## Architectural direction
 
-The repository now follows the intended split:
+The repository converges on:
 
-1. `core`: mission definition and shared validation/types
-2. `commander`: runtime semantics and in-memory execution
-3. `postgres-commander`: Postgres-specific schema/store/leasing surface
-4. `examples`: public API usage
+1. `core`: definition, semantics, shared contracts, abstract runtime base
+2. `in-memory-commander`: fast reference runtime
+3. `sqlite-commander`: durable local/dev runtime for v1
+4. `examples`: public API usage only
+
+## v1 semantic minimum
+
+By v1 RC, the repo must clearly support:
+
+- `start` with runtime validation
+- `step`
+- `needTo`
+- `sleep`
+- retry policies
+- inspection APIs
+- in-memory execution
+- durable SQLite execution
+- restart/reload continuity through SQLite
+
+## Explicitly out of scope for v1
+
+- Postgres durable runtime
+- workflow versioning for already-running missions
+- external workflow engine bridges
+- visual builders
+- frontend-first runtime support
