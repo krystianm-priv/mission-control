@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { type EngineClock, m } from "@mission-control/core";
-import { z } from "zod/v4";
 
 import { PgCommander } from "./commander.ts";
 
@@ -77,10 +76,30 @@ test("PgCommander survives reload for waiting signal missions", async () => {
 		const mission = m
 			.define("approval")
 			.start({
-				input: z.object({ email: z.email() }),
+				input: {
+					parse: (input: unknown) => {
+						const value = input as { email?: unknown };
+
+						if (typeof value.email !== "string" || !value.email.includes("@")) {
+							throw new Error("Invalid email");
+						}
+
+						return { email: value.email };
+					},
+				},
 				run: async ({ ctx }) => ({ email: ctx.events.start.input.email }),
 			})
-			.needTo("receive-approval", z.object({ approvedBy: z.string() }))
+			.needTo("receive-approval", {
+				parse: (input: unknown) => {
+					const value = input as { approvedBy?: unknown };
+
+					if (typeof value.approvedBy !== "string") {
+						throw new Error("Invalid approvedBy");
+					}
+
+					return { approvedBy: value.approvedBy };
+				},
+			})
 			.step("archive", async ({ ctx }) => ({
 				approvedBy: ctx.events["receive-approval"].input.approvedBy,
 			}))
@@ -122,7 +141,17 @@ test("PgCommander resumes sleep timers after reload", async () => {
 		const mission = m
 			.define("reminder")
 			.start({
-				input: z.object({ id: z.string() }),
+				input: {
+					parse: (input: unknown) => {
+						const value = input as { id?: unknown };
+
+						if (typeof value.id !== "string") {
+							throw new Error("Invalid id");
+						}
+
+						return { id: value.id };
+					},
+				},
 				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
 			})
 			.sleep("pause", 1000)
@@ -167,7 +196,17 @@ test("PgCommander resumes retry backoff after reload", async () => {
 		const mission = m
 			.define("retry-durable")
 			.start({
-				input: z.object({ id: z.string() }),
+				input: {
+					parse: (input: unknown) => {
+						const value = input as { id?: unknown };
+
+						if (typeof value.id !== "string") {
+							throw new Error("Invalid id");
+						}
+
+						return { id: value.id };
+					},
+				},
 				run: async () => ({ ok: true }),
 			})
 			.step(

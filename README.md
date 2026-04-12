@@ -60,7 +60,6 @@ Owns:
 ## Requirements
 
 - Node.js `22.11+`
-- `zod` in your app if you use Zod schemas
 
 `@mission-control/postgres-commander` does not require a specific client library.
 You provide a single `execute(query: string)` function that runs raw SQL against Postgres.

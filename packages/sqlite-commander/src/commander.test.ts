@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { type EngineClock, m } from "@mission-control/core";
-import { z } from "zod/v4";
 
 import { SQLiteCommander } from "./commander.ts";
 
@@ -48,10 +47,14 @@ test("SQLiteCommander survives reload for waiting signal missions", async () => 
 		const mission = m
 			.define("approval")
 			.start({
-				input: z.object({ email: z.email() }),
+				input: {
+					parse: i => i as { email: string },
+				},
 				run: async ({ ctx }) => ({ email: ctx.events.start.input.email }),
 			})
-			.needTo("receive-approval", z.object({ approvedBy: z.string() }))
+			.needTo("receive-approval", {
+				parse: i => i as { approvedBy: string },
+			})
 			.step("archive", async ({ ctx }) => ({
 				approvedBy: ctx.events["receive-approval"].input.approvedBy,
 			}))
@@ -89,7 +92,9 @@ test("SQLiteCommander resumes sleep timers after reload", async () => {
 		const mission = m
 			.define("reminder")
 			.start({
-				input: z.object({ id: z.string() }),
+				input: {
+					parse: i => i as { id: string },
+				},
 				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
 			})
 			.sleep("pause", 1000)
@@ -130,7 +135,9 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 		const mission = m
 			.define("retry-durable")
 			.start({
-				input: z.object({ id: z.string() }),
+				input: {
+					parse: i => i as { id: string },
+				},
 				run: async () => ({ ok: true }),
 			})
 			.step(

@@ -10,7 +10,14 @@ import {
 export const askForReviewMission = m
 	.define("ask-for-review")
 	.start({
-		input: z.strictObject({ email: z.email() }),
+		input: {
+			parse: (i: unknown) => {
+				const schema = z.object({
+					email: z.email(),
+				});
+				return schema.parse(i);
+			}
+		},
 		run: async ({ ctx }) => {
 			return {
 				recordId: await createReviewRequestRecord(ctx.events.start.input.email),

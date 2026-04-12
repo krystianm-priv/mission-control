@@ -5,7 +5,6 @@ import {
 	MissionValidationError,
 	m,
 } from "@mission-control/core";
-import { z } from "zod/v4";
 import { FakeClock } from "../testing/fixtures.ts";
 import { InMemoryCommander } from "./commander.ts";
 
@@ -13,7 +12,9 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 	const mission = m
 		.define("approval-flow")
 		.start({
-			input: z.strictObject({ email: z.email() }),
+			input: {
+				parse: (i) => i as { email: string },
+			},
 			run: async ({ ctx }) => ({
 				normalizedEmail: ctx.events.start.input.email,
 			}),
@@ -21,7 +22,9 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 		.step("send-email", async ({ ctx }) => ({
 			sentTo: ctx.events.start.output.normalizedEmail,
 		}))
-		.needTo("receive-approval", z.strictObject({ approvedBy: z.string() }))
+		.needTo("receive-approval", {
+			parse: (i) => i as { approvedBy: string },
+		})
 		.step("archive", async ({ ctx }) => ({
 			approvedBy: ctx.events["receive-approval"].input.approvedBy,
 		}))
@@ -55,7 +58,17 @@ test("invalid start input fails fast with MissionValidationError", async () => {
 	const mission = m
 		.define("validation")
 		.start({
-			input: z.strictObject({ email: z.email() }),
+			input: {
+				parse: (i) => {
+					const v = i as { email?: unknown };
+
+					if (typeof v.email !== "string" || !v.email.includes("@")) {
+						throw new Error("Invalid email");
+					}
+
+					return { email: v.email };
+				},
+			},
 			run: async () => ({ ok: true }),
 		})
 		.end();
@@ -63,12 +76,14 @@ test("invalid start input fails fast with MissionValidationError", async () => {
 	const commander = new InMemoryCommander({
 		createMissionId: () => "mission-2",
 	});
+
 	const handle = commander.createMission(mission);
 
 	await assert.rejects(
 		() => handle.start({ email: "nope" }),
 		MissionValidationError,
 	);
+
 	assert.equal(handle.status, "failed");
 });
 
@@ -76,20 +91,35 @@ test("wrong signal name fails clearly", async () => {
 	const mission = m
 		.define("wrong-signal")
 		.start({
-			input: z.object({ id: z.string() }),
+			input: {
+				parse: (i: unknown) => {
+					return i as { id: string };
+				},
+			},
 			run: async () => ({ ok: true }),
 		})
-		.needTo("expected", z.object({ value: z.string() }))
+		.needTo("expected", {
+			parse: (i: unknown) => {
+				const v = i as { value?: unknown };
+
+				if (typeof v.value !== "string") {
+					throw new Error("Invalid value");
+				}
+
+				return { value: v.value };
+			},
+		})
 		.end();
 
 	const commander = new InMemoryCommander({
 		createMissionId: () => "mission-3",
 	});
+
 	const handle = commander.createMission(mission);
 
 	await handle.start({ id: "123" });
 	await assert.rejects(
-		() => handle.signal("expected" as never, { wrong: true } as never),
+		() => handle.signal("expected", { wrong: true } as never),
 		MissionValidationError,
 	);
 	await assert.rejects(
@@ -103,7 +133,9 @@ test("step retry policy retries before succeeding", async () => {
 	const mission = m
 		.define("retry")
 		.start({
-			input: z.object({ id: z.string() }),
+			input: {
+				parse: (i) => i as { id: string },
+			},
 			run: async () => ({ ok: true }),
 		})
 		.step(
@@ -139,7 +171,9 @@ test("sleep nodes schedule automatic timer wakeups", async () => {
 	const mission = m
 		.define("timer")
 		.start({
-			input: z.object({ id: z.string() }),
+			input: {
+				parse: (i) => i as { id: string },
+			},
 			run: async () => ({ ok: true }),
 		})
 		.sleep("delay", 1000)
@@ -168,12 +202,20 @@ test("needTo timeout fails deterministically", async () => {
 	const mission = m
 		.define("timeout")
 		.start({
-			input: z.object({ id: z.string() }),
+			input: {
+				parse: (i) => i as { id: string },
+			},
 			run: async () => ({ ok: true }),
 		})
-		.needTo("approval", z.object({ approved: z.boolean() }), {
-			timeout: { afterMs: 500, action: "fail" },
-		})
+		.needTo(
+			"approval",
+			{
+				parse: (i) => i as { approved: boolean },
+			},
+			{
+				timeout: { afterMs: 500, action: "fail" },
+			},
+		)
 		.end();
 
 	const commander = new InMemoryCommander({
@@ -193,11 +235,15 @@ test("inspection APIs expose history, signals, timers, and context accumulation"
 	const mission = m
 		.define("inspect")
 		.start({
-			input: z.object({ id: z.string() }),
+			input: {
+				parse: (i) => i as { id: string },
+			},
 			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
 		})
 		.sleep("pause", 10)
-		.needTo("resume", z.object({ value: z.string() }))
+		.needTo("resume", {
+			parse: (i) => i as { value: string },
+		})
 		.step("finish", async ({ ctx }) => ({
 			value: ctx.events.resume.input.value,
 		}))

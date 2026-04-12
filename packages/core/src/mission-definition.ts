@@ -1,6 +1,6 @@
 import { MissionDefinitionError } from "./errors.ts";
 import { normalizeRetryPolicy, type RetryOptions } from "./retry-policy.ts";
-import type { AnyInputSchema, InferInput } from "./schema.ts";
+import type { AnyInputSchema, iInferInput } from "./schema.ts";
 import type { NeedToOptions } from "./timer.ts";
 import type {
 	AddEvent,
@@ -43,11 +43,11 @@ type DefineBuilder<_Name extends string> = {
 		input: S;
 		run: (args: {
 			ctx: MissionContext<{
-				start: { input: InferInput<S> };
+				start: { input: iInferInput<S> };
 			}>;
 		}) => Promise<StartOutput>;
 	}): ChainBuilder<{
-		start: { input: InferInput<S>; output: StartOutput };
+		start: { input: iInferInput<S>; output: StartOutput };
 	}>;
 };
 
@@ -99,7 +99,6 @@ function makeChainBuilder<E extends EventsMap>(
 				{
 					kind: "step",
 					name: eventName,
-					// 🔑 erase generic here (safe boundary)
 					run: run as StepNode["run"],
 					retryPolicy: normalizeRetryPolicy(options),
 				},
@@ -142,10 +141,9 @@ function makeChainBuilder<E extends EventsMap>(
 				},
 			];
 
-			return makeChainBuilder<AddEvent<E, typeof eventName, SleepEventRecord>>(
-				missionName,
-				nextNodes,
-			);
+			return makeChainBuilder<
+				AddEvent<E, typeof eventName, SleepEventRecord>
+			>(missionName, nextNodes);
 		},
 
 		end() {
@@ -176,13 +174,12 @@ export const m = {
 				const startNode: StartNode = {
 					kind: "start",
 					inputSchema: args.input,
-					// 🔑 same erasure here
 					run: args.run as StartNode["run"],
 				};
 
 				return makeChainBuilder<{
 					start: {
-						input: InferInput<typeof args.input>;
+						input: iInferInput<typeof args.input>;
 						output: Awaited<ReturnType<typeof args.run>>;
 					};
 				}>(missionName, [startNode]);

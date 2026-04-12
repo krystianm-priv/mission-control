@@ -1,5 +1,5 @@
 import type { RetryPolicy } from "./retry-policy.ts";
-import type { AnyInputSchema, InferInput } from "./schema.ts";
+import type { AnyInputSchema, iInferInput } from "./schema.ts";
 import type { NeedToOptions, SleepResult } from "./timer.ts";
 
 export interface EventRecord {
@@ -92,4 +92,4 @@ export type ExternalEventNames<M extends MissionDefinition> = {
 
 export type SleepEventRecord = { output: SleepResult };
 
-export type NeedToInput<S extends AnyInputSchema> = { input: InferInput<S> };
+export type NeedToInput<S extends AnyInputSchema> = { input: iInferInput<S> };

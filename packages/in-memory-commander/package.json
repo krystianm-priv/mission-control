@@ -6,7 +6,6 @@
 	"license": "MIT",
 	"main": "./src/index.ts",
 	"dependencies": {
-		"@mission-control/core": "*",
-		"zod": "^4.3.6"
+		"@mission-control/core": "*"
 	}
 }

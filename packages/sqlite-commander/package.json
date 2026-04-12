@@ -9,7 +9,6 @@
 		"@mission-control/core": "*"
 	},
 	"peerDependencies": {
-		"typescript": "6.0.2",
-		"zod": "^4"
+		"typescript": "6.0.2"
 	}
 }
