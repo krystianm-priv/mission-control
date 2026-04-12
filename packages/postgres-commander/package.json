@@ -1,7 +1,7 @@
 {
-	"name": "@mission-control/commander",
+	"name": "@mission-control/postgres-commander",
 	"version": "1.0.0-rc.1",
-	"description": "Shared runtime contracts, execution engine, and in-memory commander for Mission Control.",
+	"description": "Postgres-backed durable commander package for Mission Control.",
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/index.js",
@@ -14,7 +14,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"src/migrations"
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
@@ -26,6 +27,7 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@mission-control/commander": "workspace:*",
 		"@mission-control/core": "workspace:*"
 	}
 }

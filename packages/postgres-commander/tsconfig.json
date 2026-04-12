@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"noEmit": true,
 		"paths": {
-			"@mission-control/core": ["../core/src/index.ts"]
+			"@mission-control/core": ["../core/src/index.ts"],
+			"@mission-control/commander": ["../commander/src/index.ts"]
 		}
 	},
 	"include": ["src/**/*.ts"]

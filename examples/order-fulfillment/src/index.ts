@@ -12,7 +12,7 @@ await mission.startMission({
 });
 
 setTimeout(() => {
-	mission.signal("confirm-payment", {
+	void mission.signal("confirm-payment", {
 		paymentId: "pay-9012",
 		amount: 59.99,
 		currency: "USD",
@@ -20,8 +20,11 @@ setTimeout(() => {
 }, 100);
 
 setTimeout(() => {
-	mission.signal("confirm-delivery", {
+	void mission.signal("confirm-delivery", {
 		deliveredAt: new Date().toISOString(),
 		receivedBy: "Alex P.",
 	});
 }, 200);
+
+await mission.waitForCompletion();
+console.log(mission.inspect());

@@ -5,223 +5,100 @@
 ### Root
 
 - `README.md`
-  - Concept-first explanation of Missions.
-  - Strong philosophy, but not yet a release-ready product README.
+  - v1 product README with package layout, quick start, and validation commands
 
 - `package.json`
-  - Bun workspace root.
-  - Has root `build`, `dev`, and `lint`, but not a full release pipeline.
+  - npm workspace root
+  - root `build`, `check-types`, `test`, and `release:check` scripts
 
 - `turbo.json`
-  - Basic task wiring.
-  - Needs to expand for test and typecheck discipline.
+  - workspace task wiring for build, lint, typecheck, and test
 
-- `biome.json`
-  - Formatting/linting baseline.
+- `tsconfig.base.json`
+  - shared compiler baseline for packages and examples
 
 ### `packages/core`
 
 Current role:
-- contains the mission DSL builder in `m.ts`
+- mission definition DSL
+- schema parsing helpers
+- retry and timer metadata
 
-Current important files:
-- `packages/core/m.ts`
-  - mission definition DSL
-  - generic schema typing
-  - context/event typing
-  - `toStatic()` projection
-
-Main issue:
-- good conceptual core, but still a single-file prototype shape
+Important files:
+- `packages/core/src/mission-definition.ts`
+  - builder for `start`, `step`, `needTo`, `sleep`, `end`
+- `packages/core/src/schema.ts`
+  - runtime schema parsing and validation failure handling
+- `packages/core/src/retry-policy.ts`
+  - retry normalization and backoff calculation
+- `packages/core/src/timer.ts`
+  - timeout and timer metadata types
 
 ### `packages/commander`
 
 Current role:
-- contains the in-memory runtime in `commander.ts`
+- shared runtime contracts and execution engine
+- in-memory commander
+- test fixtures for deterministic semantic testing
 
-Current important files:
-- `packages/commander/commander.ts`
-  - current in-memory mission runtime
-  - mission registry and instances
-  - start/signal flow
-  - placeholder validation bypass
+Important files:
+- `packages/commander/src/contracts.ts`
+  - public runtime snapshot/history/inspection types
+- `packages/commander/src/engine.ts`
+  - shared execution loop, retries, timers, external waits, completion handling
+- `packages/commander/src/in-memory/commander.ts`
+  - public in-memory commander implementation
+- `packages/commander/src/testing/fixtures.ts`
+  - fake clock for deterministic timer/timeout tests
 
-Main issue:
-- execution loop, state model, storage, and API are all still tightly mixed
+### `packages/postgres-commander`
+
+Current role:
+- durable Postgres package surface
+- schema, migrations, serialization, store primitives, and leasing SQL
+
+Important files:
+- `packages/postgres-commander/src/sql.ts`
+  - schema DDL and runnable mission claim SQL
+- `packages/postgres-commander/src/migrations/0001_init.ts`
+  - initial migration
+- `packages/postgres-commander/src/store.ts`
+  - storage-only query primitives
+- `packages/postgres-commander/src/serialization.ts`
+  - explicit JSON persistence format
+- `packages/postgres-commander/src/worker.ts`
+  - claim helper for worker loops
+
+Main limitation:
+- end-to-end durable runtime execution still needs a real Postgres instance
 
 ### `examples/ask-user-for-review`
 
 Current role:
-- demonstrates a human-in-the-loop mission
+- human-in-the-loop in-memory example using the public packages
 
 Important files:
 - `src/mission-definition.ts`
-  - good canonical example of `needTo(...)`
-- `src/db.ts`
-  - example-only SQLite persistence
-- `src/utils.ts`
-  - fake integrations and record update logic
-
-Main issue:
-- demonstrates the concept well, but not the production v1 runtime story
+  - canonical `needTo(...)` mission
+- `src/index.ts`
+  - starts, signals, waits for completion, prints inspection output
 
 ### `examples/order-fulfillment`
 
 Current role:
-- demonstrates a business workflow with two external signals
+- longer sequential example with two external signals
 
 Important files:
 - `src/mission-definition.ts`
-  - good example of sequential + external event flow
-- `src/utils.ts`
-  - fake domain integrations
-
-Main issue:
-- still concept/demo oriented; does not prove durability, retries, timers, or inspection
-
-## Target v1 repository map
-
-### Root
-
-- `README.md`
-  - product README for v1
-  - install, quick start, guarantees, non-goals
-
-- `ROADMAP.md`
-  - execution plan and source of truth for autonomous agents
-
-- `AGENTS.md`
-  - agent operating manual tied to the roadmap
-
-- `SOURCEMAP.md`
-  - this document
-
-### `packages/core`
-
-Target role:
-- mission-definition DSL only
-- shared public types needed by all commanders
-- schema/runtime validation helpers
-- retry and timer metadata types
-
-Suggested shape:
-
-```text
-packages/core/
-  src/
-    index.ts
-    mission-definition.ts
-    schema.ts
-    errors.ts
-    retry-policy.ts
-    timer.ts
-    types.ts
-```
-
-Rules:
-- no Postgres logic
-- no in-memory storage logic
-- no external engine bridge logic
-
-### `packages/commander`
-
-Target role:
-- shared commander contracts
-- shared mission execution engine / interpreter
-- in-memory commander
-- testing helpers that describe baseline semantics
-
-Suggested shape:
-
-```text
-packages/commander/
-  src/
-    index.ts
-    contracts.ts
-    engine.ts
-    validation.ts
-    errors.ts
-    in-memory/
-      commander.ts
-      store.ts
-    testing/
-      fixtures.ts
-```
-
-Rules:
-- shared runtime semantics live here
-- do not move Postgres-specific SQL or locking here
-
-### `packages/postgres-commander`
-
-Target role:
-- durable Postgres-backed commander
-- schema and migrations
-- leasing / claiming
-- timers and retries persistence
-- worker loop
-- inspection queries
-
-Suggested shape:
-
-```text
-packages/postgres-commander/
-  src/
-    index.ts
-    commander.ts
-    store.ts
-    worker.ts
-    leasing.ts
-    serialization.ts
-    migrations/
-    sql/
-```
-
-Rules:
-- all Postgres-specific concerns belong here
-- transaction boundaries should be explicit
-- this package is the core of the v1 durable story
-
-### `examples`
-
-Target role:
-- prove the v1 product story
-
-Expected examples:
-
-- `ask-user-for-review`
-  - human-in-the-loop waiting flow
-- `order-fulfillment`
-  - durable signals, inspection, retries where sensible
-- `durable-reminder`
-  - timer-based continuation with Postgres
+  - start, step, wait, signal, completion flow
+- `src/index.ts`
+  - demonstrates public commander APIs and inspection
 
 ## Architectural direction
 
-The architecture should converge on this split:
+The repository now follows the intended split:
 
-1. **Mission definition** in `core`
-2. **Execution semantics** in `commander`
-3. **Durable Postgres implementation** in `postgres-commander`
-4. **Examples and docs** proving the public story
-
-## v1 semantic minimum
-
-By v1, the repo should clearly support:
-
-- `start` with runtime validation
-- `step`
-- `needTo` external waits
-- durable `signal`
-- retries
-- timers
-- inspection APIs
-- in-memory execution
-- Postgres durable execution
-
-## Explicitly out of scope for v1
-
-- workflow versioning for already-running missions
-- external workflow engine bridges
-- a visual workflow editor
-- a frontend-first mission runtime story
+1. `core`: mission definition and shared validation/types
+2. `commander`: runtime semantics and in-memory execution
+3. `postgres-commander`: Postgres-specific schema/store/leasing surface
+4. `examples`: public API usage

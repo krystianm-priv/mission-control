@@ -1,11 +1,12 @@
 {
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"module": "nodenext",
-		"moduleResolution": "nodenext",
-		"target": "esnext",
-		"types": ["bun"],
 		"noEmit": true,
 		"allowImportingTsExtensions": true,
-		"erasableSyntaxOnly": true
-	}
+		"paths": {
+			"@mission-control/core": ["../../packages/core/src/index.ts"],
+			"@mission-control/commander": ["../../packages/commander/src/index.ts"]
+		}
+	},
+	"include": ["src/**/*.ts"]
 }

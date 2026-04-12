@@ -1,17 +1,34 @@
-# commander
+# @mission-control/commander
 
-The commander package provides a **runtime** for mission definitions.
+`@mission-control/commander` defines the shared runtime contracts, the reusable execution engine, and the reference `InMemoryCommander`.
 
-This package currently ships a lightweight **in-memory commander** intended for examples and local runs.
+## Public surface
+
+- `InMemoryCommander`
+- `inMemoryCommander`
+- runtime contracts: `MissionSnapshot`, `MissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
+- engine utilities: `createEngineRuntime`, `startRuntime`, `signalRuntime`, `runUntilWaitOrEnd`
+- test helper: `FakeClock`
+
+## Semantics
+
+- `idle`: created, not yet started
+- `running`: currently interpreting steps
+- `waiting`: paused on a signal or timer
+- `completed`: reached the terminal `end()`
+- `failed`: reached a terminal error state
 
 ## Example
 
 ```ts
-import { inMemoryCommander } from "@mission-control/commander";
-import { askForReviewMission } from "./mission-definition.ts";
+import { InMemoryCommander } from "@mission-control/commander";
+import { approvalMission } from "./approval-mission.js";
 
-const mission = inMemoryCommander.createMission(askForReviewMission);
+const commander = new InMemoryCommander();
+const mission = commander.createMission(approvalMission);
 
-await mission.startMission({ email: "hello@world.com" });
-await mission.signal("receive-review", "Great job!");
+await mission.start({ email: "hello@example.com" });
+await mission.signal("receive-approval", { approvedBy: "ops" });
+
+console.log(mission.inspect());
 ```

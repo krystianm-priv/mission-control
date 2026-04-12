@@ -63,7 +63,7 @@ If two tasks are both available, prefer:
 
 ### MC-001 — Convert all packages to publishable source layout
 **Depends on:** none  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Move package code to `src/` layouts.
@@ -80,7 +80,7 @@ If two tasks are both available, prefer:
 
 ### MC-002 — Add test, typecheck, and build pipelines that gate work
 **Depends on:** MC-001  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Standardize `build`, `check-types`, and `test` tasks per package.
@@ -96,7 +96,7 @@ If two tasks are both available, prefer:
 
 ### MC-003 — Harden core types and runtime schema validation
 **Depends on:** MC-002  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Preserve the current mission-definition philosophy while making runtime validation real.
@@ -110,7 +110,7 @@ If two tasks are both available, prefer:
 
 ### MC-004 — Define the shared commander contracts and runtime state model
 **Depends on:** MC-003  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Define the runtime-neutral contracts both commanders must honor.
@@ -124,7 +124,7 @@ If two tasks are both available, prefer:
 
 ### MC-005 — Extract a shared execution engine from the current commander
 **Depends on:** MC-004  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Separate mission interpretation from storage and scheduling.
@@ -140,7 +140,7 @@ If two tasks are both available, prefer:
 
 ### MC-006 — Rebuild `InMemoryCommander` on the shared engine
 **Depends on:** MC-005  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Keep the in-memory commander as the simplest runnable implementation of v1 semantics.
@@ -154,7 +154,7 @@ If two tasks are both available, prefer:
 
 ### MC-007 — Add a serious in-memory test suite
 **Depends on:** MC-006  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Lock down expected mission behavior before adding durable complexity.
@@ -168,7 +168,7 @@ If two tasks are both available, prefer:
 
 ### MC-008 — Design the Postgres schema and migrations
 **Depends on:** MC-005  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Introduce the durable data model for missions, event history, queued signals, timers, and step attempts.
@@ -181,7 +181,7 @@ If two tasks are both available, prefer:
 
 ### MC-009 — Implement the Postgres store primitives
 **Depends on:** MC-008  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Build the low-level Postgres reads/writes before adding worker logic.
@@ -222,7 +222,7 @@ If two tasks are both available, prefer:
 
 ### MC-012 — Add step retry policy to the DSL/runtime model
 **Depends on:** MC-004  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Introduce explicit retry semantics instead of leaving retries implicit.
@@ -263,7 +263,7 @@ If two tasks are both available, prefer:
 
 ### MC-015 — Extend the DSL with timer primitives
 **Depends on:** MC-004  
-**Status:** [ ]
+**Status:** [x]
 
 **Outcome**
 - Add the minimum timer abstraction needed for a credible v1 runtime.

@@ -1,0 +1,12 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"rootDir": "src",
+		"outDir": "dist",
+		"paths": {
+			"@mission-control/core": ["../core/dist/index.d.ts"],
+			"@mission-control/commander": ["../commander/dist/index.d.ts"]
+		}
+	}
+}
