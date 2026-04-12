@@ -1,105 +1,80 @@
 # ROADMAP.md
 
-## Goal
+This roadmap tracks the real v1 release candidate for `mission-control`.
 
-Ship `mission-control` v1 as a publishable TypeScript workflow system with:
+The shipped package set is:
 
 - `@mission-control/core`
 - `@mission-control/in-memory-commander`
-- `@mission-control/sqlite-commander`
-- typed mission definitions
-- runtime validation
-- retries and timers
-- inspection APIs
-- durable SQLite persistence and restart-safe resume
+- `@mission-control/postgres-commander`
 
-This roadmap intentionally **excludes** workflow versioning for in-flight missions and any Postgres runtime. Postgres is a v1.1 concern.
+v1 includes:
+
+- typed mission definitions
+- in-memory execution
+- durable Postgres persistence
+- retries
+- timers
+- inspection APIs
+- restart-safe reload/resume
+
+v1 does **not** include workflow versioning for already-running missions.
 
 ## Release bar
 
-v1 RC is done only when all of the following are true:
-
-1. `@mission-control/core` is publishable, documented, and exposes the abstract commander base.
+1. `@mission-control/core` is publishable and documented.
 2. `@mission-control/in-memory-commander` is publishable and tested.
-3. `@mission-control/sqlite-commander` is publishable and tested.
-4. Missions survive process restarts and continue from SQLite state.
-5. Signals, retries, and timers work durably in SQLite.
-6. Mission state and history can be inspected programmatically.
-7. Examples demonstrate the real public v1 story.
-8. All publishable tarballs are clean enough that the next step is `npm publish`.
+3. `@mission-control/postgres-commander` is publishable and tested.
+4. Missions survive process reloads and continue from durable Postgres state.
+5. Signals, retries, and timers work durably through the Postgres runtime.
+6. Root docs, examples, exports, scripts, and tarballs match reality.
 
-## Milestone 0 — Source of truth and package structure
+## Milestone 1 — Repository truth
 
-### MC-001 — Rewrite control docs for the SQLite v1 architecture
-**Depends on:** none  
+### MC-001 — Rewrite control docs for the Postgres v1 architecture
 **Status:** [x]
 
-### MC-002 — Rename `packages/commander` to `packages/in-memory-commander`
-**Depends on:** MC-001  
+### MC-002 — Keep package names, exports, and examples aligned with the real release target
 **Status:** [x]
 
-### MC-003 — Remove Postgres from the v1 product story
-**Depends on:** MC-001  
+## Milestone 2 — Core and in-memory runtime
+
+### MC-003 — Expose the abstract `Commander` base class and runtime-neutral contracts from core
 **Status:** [x]
 
-## Milestone 1 — Core architecture
-
-### MC-004 — Move runtime-neutral contracts and abstract `Commander` base into `@mission-control/core`
-**Depends on:** MC-002  
+### MC-004 — Keep the in-memory commander explicit and singleton-free
 **Status:** [x]
 
-### MC-005 — Keep the mission DSL, validation, retries, and timers coherent under the new core package surface
-**Depends on:** MC-004  
+### MC-005 — Cover mission validation, waits, retries, timers, and inspection semantics with local tests
 **Status:** [x]
 
-## Milestone 2 — In-memory runtime
+## Milestone 3 — Durable Postgres runtime
 
-### MC-006 — Rebuild the in-memory package around explicit runtime instantiation
-**Depends on:** MC-004  
+### MC-006 — Implement Postgres schema/bootstrap and inspection serialization
 **Status:** [x]
 
-### MC-007 — Lock down in-memory semantics with tests
-**Depends on:** MC-006  
+### MC-007 — Implement a durable `PgCommander` behind an `execute(query: string)` contract
 **Status:** [x]
 
-## Milestone 3 — SQLite durable runtime
-
-### MC-008 — Add SQLite schema/bootstrap and storage primitives
-**Depends on:** MC-004  
+### MC-008 — Support restart-safe reload/resume for signals, sleep timers, and retry backoff
 **Status:** [x]
 
-### MC-009 — Implement `SQLiteCommander` lifecycle, persistence, and inspection APIs
-**Depends on:** MC-008, MC-006  
+### MC-009 — Add durable runtime tests using PGlite when available locally
 **Status:** [x]
 
-### MC-010 — Implement restart-safe resume, durable signals, retries, and timers in SQLite
-**Depends on:** MC-009, MC-005  
+## Milestone 4 — Release candidate cleanup
+
+### MC-010 — Update README, package READMEs, and examples to the final public API
 **Status:** [x]
 
-### MC-011 — Add durable SQLite tests for reload/resume semantics
-**Depends on:** MC-010  
+### MC-011 — Ensure build, typecheck, test, and pack scripts reflect the real release path
 **Status:** [x]
 
-## Milestone 4 — Examples and release truth
-
-### MC-012 — Update examples to use the real public packages and APIs
-**Depends on:** MC-007, MC-011  
+### MC-012 — Keep package tarballs free of accidental test/build junk
 **Status:** [x]
 
-### MC-013 — Add a durable SQLite example
-**Depends on:** MC-011  
-**Status:** [x]
+## Known v1 limits
 
-### MC-014 — Rewrite the README and package READMEs so they match the shipped product
-**Depends on:** MC-012, MC-013  
-**Status:** [x]
-
-### MC-015 — Clean package metadata, exports, tarballs, and verification scripts for release
-**Depends on:** MC-014  
-**Status:** [x]
-
-## v1.1 later
-
-- Postgres durable backend
-- multi-process leasing beyond SQLite’s local-process strengths
-- broader operator/deployment guidance for larger production use
+- the Postgres runtime currently targets single-process usage, not multi-worker leasing
+- durable tests rely on `@electric-sql/pglite` when that package is installed locally
+- no workflow versioning for already-running missions

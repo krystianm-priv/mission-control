@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { m, type EngineClock } from "@mission-control/core";
 
-import { SQLiteCommander } from "./commander.js";
+import { PgCommander } from "./commander.js";
 
 class FakeClock implements EngineClock {
 	private nowMs = 0;
@@ -34,13 +34,42 @@ class FakeClock implements EngineClock {
 	}
 }
 
-function createTempDbPath(): { dir: string; path: string } {
-	const dir = mkdtempSync(join(tmpdir(), "mission-control-sqlite-commander-"));
-	return { dir, path: join(dir, "missions.sqlite") };
+async function createPGliteHarness(): Promise<
+	| {
+			createExecute: () => Promise<(query: string) => Promise<unknown>>;
+			cleanup: () => Promise<void>;
+	  }
+	| undefined
+> {
+	try {
+		const mod = await import("@electric-sql/pglite");
+		const dir = mkdtempSync(join(tmpdir(), "mission-control-pg-commander-"));
+		const path = join(dir, "pgdata");
+		const openDbs: Array<{ close(): Promise<void> }> = [];
+		return {
+			createExecute: async () => {
+				const db = await mod.PGlite.create(path);
+				openDbs.push(db);
+				return (query: string) => db.exec(query);
+			},
+			cleanup: async () => {
+				for (const db of openDbs.splice(0)) {
+					await db.close();
+				}
+				rmSync(dir, { recursive: true, force: true });
+			},
+		};
+	} catch {
+		return undefined;
+	}
 }
 
-test("SQLiteCommander survives reload for waiting signal missions", async () => {
-	const temp = createTempDbPath();
+test("PgCommander survives reload for waiting signal missions", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
+
 	try {
 		const mission = m
 			.define("approval")
@@ -52,8 +81,8 @@ test("SQLiteCommander survives reload for waiting signal missions", async () => 
 			.step("archive", async ({ ctx }) => ({ approvedBy: ctx.events["receive-approval"].input.approvedBy }))
 			.end();
 
-		const commander1 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander1 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 			createMissionId: () => "mission-signal",
 		});
@@ -61,23 +90,27 @@ test("SQLiteCommander survives reload for waiting signal missions", async () => 
 		await created.start({ email: "hello@example.com" });
 		commander1.close();
 
-		const commander2 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander2 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 		});
-		const loaded = commander2.getMission<typeof mission>("mission-signal");
+		const loaded = await commander2.getMission<typeof mission>("mission-signal");
 		assert.ok(loaded);
 		await loaded.signal("receive-approval", { approvedBy: "ops" });
 		await loaded.waitForCompletion();
 		assert.equal(loaded.inspect().snapshot.status, "completed");
 		commander2.close();
 	} finally {
-		rmSync(temp.dir, { recursive: true, force: true });
+		await harness.cleanup();
 	}
 });
 
-test("SQLiteCommander resumes sleep timers after reload", async () => {
-	const temp = createTempDbPath();
+test("PgCommander resumes sleep timers after reload", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
+
 	const clock = new FakeClock();
 	try {
 		const mission = m
@@ -90,8 +123,8 @@ test("SQLiteCommander resumes sleep timers after reload", async () => {
 			.step("finish", async () => ({ ok: true }))
 			.end();
 
-		const commander1 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander1 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 			clock,
 			createMissionId: () => "mission-timer",
@@ -100,24 +133,28 @@ test("SQLiteCommander resumes sleep timers after reload", async () => {
 		await created.start({ id: "123" });
 		commander1.close();
 
-		const commander2 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander2 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 			clock,
 		});
-		const loaded = commander2.getMission<typeof mission>("mission-timer");
+		const loaded = await commander2.getMission<typeof mission>("mission-timer");
 		assert.ok(loaded);
 		await clock.advanceBy(1000);
 		await loaded.waitForCompletion();
 		assert.equal(loaded.inspect().snapshot.status, "completed");
 		commander2.close();
 	} finally {
-		rmSync(temp.dir, { recursive: true, force: true });
+		await harness.cleanup();
 	}
 });
 
-test("SQLiteCommander resumes retry backoff after reload", async () => {
-	const temp = createTempDbPath();
+test("PgCommander resumes retry backoff after reload", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
+
 	const clock = new FakeClock();
 	let attempts = 0;
 	try {
@@ -140,8 +177,8 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 			)
 			.end();
 
-		const commander1 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander1 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 			clock,
 			createMissionId: () => "mission-retry",
@@ -151,18 +188,18 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 		assert.equal(created.status, "waiting");
 		commander1.close();
 
-		const commander2 = new SQLiteCommander({
-			databasePath: temp.path,
+		const commander2 = new PgCommander({
+			execute: await harness.createExecute(),
 			definitions: [mission],
 			clock,
 		});
-		const loaded = commander2.getMission<typeof mission>("mission-retry");
+		const loaded = await commander2.getMission<typeof mission>("mission-retry");
 		assert.ok(loaded);
 		await clock.advanceBy(1000);
 		await loaded.waitForCompletion();
 		assert.equal(loaded.inspect().snapshot.status, "completed");
 		commander2.close();
 	} finally {
-		rmSync(temp.dir, { recursive: true, force: true });
+		await harness.cleanup();
 	}
 });

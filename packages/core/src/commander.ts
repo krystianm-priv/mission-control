@@ -64,11 +64,11 @@ export abstract class Commander {
 
 	public abstract getMission<M extends MissionDefinition<any>>(
 		missionId: string,
-	): MissionHandle<M> | undefined;
+	): Promise<MissionHandle<M> | undefined>;
 
-	public abstract loadMission(missionId: string): MissionInspection | undefined;
+	public abstract loadMission(missionId: string): Promise<MissionInspection | undefined>;
 
-	public abstract listWaiting(): MissionSnapshot[];
+	public abstract listWaiting(): Promise<MissionSnapshot[]>;
 
-	public abstract listScheduled(): MissionSnapshot[];
+	public abstract listScheduled(): Promise<MissionSnapshot[]>;
 }

@@ -1,4 +1,4 @@
-export const SQLITE_SCHEMA_STATEMENTS = [
+export const POSTGRES_SCHEMA_STATEMENTS = [
 	`CREATE TABLE IF NOT EXISTS mc_missions (
 		mission_id TEXT PRIMARY KEY,
 		mission_name TEXT NOT NULL,

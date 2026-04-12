@@ -16,28 +16,31 @@ import {
 	type MissionSnapshot,
 } from "@mission-control/core";
 
-import { SQLiteStore } from "./store.js";
+import { PgStore } from "./store.js";
+import type { PgCommanderExecute } from "./sql-executor.js";
 
-export interface SQLiteCommanderOptions extends CommanderOptions {
-	databasePath: string;
+export interface PgCommanderOptions extends CommanderOptions {
+	execute: PgCommanderExecute;
 }
 
-export class SQLiteCommander extends Commander {
-	private readonly store: SQLiteStore;
+export class PgCommander extends Commander {
+	private readonly store: PgStore;
 	private readonly runtimes = new Map<string, EngineRuntime>();
+	private readonly ready: Promise<void>;
+	private closed = false;
 
-	public constructor(options: SQLiteCommanderOptions) {
+	public constructor(options: PgCommanderOptions) {
 		super(options);
-		this.store = SQLiteStore.open({ databasePath: options.databasePath });
-		this.recoverPersistedRuntimes();
+		this.store = new PgStore({ execute: options.execute });
+		this.ready = this.initialize();
 	}
 
 	public close(): void {
+		this.closed = true;
 		for (const runtime of this.runtimes.values()) {
-			runtime.scheduledToken = Symbol("sqlite-commander-closed");
+			runtime.scheduledToken = Symbol("postgres-commander-closed");
 			runtime.persist = undefined;
 		}
-		this.store.close();
 	}
 
 	public override createMission<M extends MissionDefinition<any>>(
@@ -48,19 +51,20 @@ export class SQLiteCommander extends Commander {
 		const missionId = options.missionId ?? this.createMissionId();
 		const runtime = this.createPersistedRuntime(definition, missionId);
 		this.runtimes.set(missionId, runtime);
-		this.store.saveInspection(inspectRuntime(runtime));
 		return this.createHandle(runtime);
 	}
 
-	public override getMission<M extends MissionDefinition<any>>(
+	public override async getMission<M extends MissionDefinition<any>>(
 		missionId: string,
-	): MissionHandle<M> | undefined {
+	): Promise<MissionHandle<M> | undefined> {
+		await this.ensureReady();
+
 		const existing = this.runtimes.get(missionId);
 		if (existing) {
 			return this.createHandle(existing as EngineRuntime);
 		}
 
-		const inspection = this.store.loadInspection(missionId);
+		const inspection = await this.store.loadInspection(missionId);
 		if (!inspection) {
 			return undefined;
 		}
@@ -72,31 +76,48 @@ export class SQLiteCommander extends Commander {
 
 		const runtime = this.hydratePersistedRuntime(definition, inspection);
 		this.runtimes.set(missionId, runtime);
-		void recoverRuntime(runtime);
+		await recoverRuntime(runtime);
 		return this.createHandle(runtime as EngineRuntime);
 	}
 
-	public override loadMission(missionId: string): MissionInspection | undefined {
+	public override async loadMission(
+		missionId: string,
+	): Promise<MissionInspection | undefined> {
+		await this.ensureReady();
 		return this.store.loadInspection(missionId);
 	}
 
-	public override listWaiting(): MissionSnapshot[] {
+	public override async listWaiting(): Promise<MissionSnapshot[]> {
+		await this.ensureReady();
 		return this.store.listWaitingSnapshots();
 	}
 
-	public override listScheduled(): MissionSnapshot[] {
+	public override async listScheduled(): Promise<MissionSnapshot[]> {
+		await this.ensureReady();
 		return this.store.listScheduledSnapshots();
 	}
 
-	private recoverPersistedRuntimes(): void {
-		for (const inspection of this.store.listRecoverableInspections()) {
+	private async initialize(): Promise<void> {
+		await this.store.bootstrap();
+		await this.recoverPersistedRuntimes();
+	}
+
+	private async ensureReady(): Promise<void> {
+		await this.ready;
+		if (this.closed) {
+			throw new Error("This PgCommander instance has been closed.");
+		}
+	}
+
+	private async recoverPersistedRuntimes(): Promise<void> {
+		for (const inspection of await this.store.listRecoverableInspections()) {
 			const definition = this.getRegisteredMission(inspection.snapshot.missionName);
 			if (!definition) {
 				continue;
 			}
 			const runtime = this.hydratePersistedRuntime(definition, inspection);
 			this.runtimes.set(inspection.snapshot.missionId, runtime);
-			void recoverRuntime(runtime);
+			await recoverRuntime(runtime);
 		}
 	}
 
@@ -107,8 +128,10 @@ export class SQLiteCommander extends Commander {
 		let runtime!: EngineRuntime;
 		runtime = createEngineRuntime(definition, missionId, {
 			clock: this.clock,
-			persist: (activeRuntime) => {
-				this.store.saveInspection(inspectRuntime(activeRuntime));
+			persist: async (activeRuntime) => {
+				if (!this.closed) {
+					await this.store.saveInspection(inspectRuntime(activeRuntime));
+				}
 			},
 		});
 		return runtime;
@@ -121,8 +144,10 @@ export class SQLiteCommander extends Commander {
 		let runtime!: EngineRuntime;
 		runtime = hydrateEngineRuntime(definition, inspection, {
 			clock: this.clock,
-			persist: (activeRuntime) => {
-				this.store.saveInspection(inspectRuntime(activeRuntime));
+			persist: async (activeRuntime) => {
+				if (!this.closed) {
+					await this.store.saveInspection(inspectRuntime(activeRuntime));
+				}
 			},
 		});
 		return runtime;
@@ -145,14 +170,19 @@ export class SQLiteCommander extends Commander {
 				return runtime.snapshot.ctx;
 			},
 			start: async (input) => {
+				await this.ensureReady();
 				await startRuntime(runtime, input);
 			},
 			signal: async (eventName, input) => {
+				await this.ensureReady();
 				await signalRuntime(runtime, eventName, input);
 			},
 			inspect: () => inspectRuntime(runtime),
 			getHistory: () => inspectRuntime(runtime).history,
-			waitForCompletion: () => waitForCompletion(runtime),
+			waitForCompletion: async () => {
+				await this.ensureReady();
+				return waitForCompletion(runtime);
+			},
 		};
 	}
 }

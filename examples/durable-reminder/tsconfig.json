@@ -5,7 +5,7 @@
 		"allowImportingTsExtensions": true,
 		"paths": {
 			"@mission-control/core": ["../../packages/core/src/index.ts"],
-			"@mission-control/sqlite-commander": ["../../packages/sqlite-commander/src/index.ts"]
+			"@mission-control/postgres-commander": ["../../packages/postgres-commander/src/index.ts"]
 		}
 	},
 	"include": ["src/**/*.ts"]

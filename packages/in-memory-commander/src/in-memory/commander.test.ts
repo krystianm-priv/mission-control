@@ -27,7 +27,7 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 
 	await handle.start({ email: "hello@example.com" });
 	assert.equal(handle.status, "waiting");
-	assert.equal(commander.listWaiting().length, 1);
+	assert.equal((await commander.listWaiting()).length, 1);
 
 	await handle.signal("receive-approval", { approvedBy: "ops" });
 	assert.equal(handle.status, "completed");
@@ -134,7 +134,7 @@ test("sleep nodes schedule automatic timer wakeups", async () => {
 
 	await handle.start({ id: "123" });
 	assert.equal(handle.status, "waiting");
-	assert.equal(commander.listScheduled().length, 1);
+	assert.equal((await commander.listScheduled()).length, 1);
 
 	await clock.advanceBy(1000);
 	await handle.waitForCompletion();
@@ -197,7 +197,7 @@ test("inspection APIs expose history, signals, timers, and context accumulation"
 	assert.equal(handle.inspect().snapshot.waiting?.kind, "signal");
 	await handle.signal("resume", { value: "done" });
 
-	const inspection = commander.loadMission("mission-7");
+	const inspection = await commander.loadMission("mission-7");
 	assert.ok(inspection);
 	assert.equal(inspection.snapshot.status, "completed");
 	assert.equal(inspection.timers.length, 1);

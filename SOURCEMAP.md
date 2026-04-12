@@ -1,104 +1,107 @@
 # SOURCEMAP.md
 
-## Current repository map
+## Root
 
-### Root
+### `README.md`
 
-- `README.md`
-  - product README for the SQLite-based v1 story
+- product README for the current v1 release candidate
+- describes the three public packages and the `PgCommander` execute-boundary API
 
-- `package.json`
-  - npm workspace root
-  - release-oriented scripts for build, typecheck, test, and pack validation
+### `ROADMAP.md`
 
-- `turbo.json`
-  - workspace task wiring
+- release-bar task list for v1
+- must match the real package and runtime story in the repo
 
-- `tsconfig.base.json`
-  - shared TypeScript baseline
+### `AGENTS.md`
+
+- agent operating manual for roadmap-first work
+
+### `package.json`
+
+- workspace scripts for build, typecheck, lint, test, and pack verification
+
+## Packages
 
 ### `packages/core`
 
-Current role:
-- mission DSL
-- shared types and validation helpers
-- retry and timer metadata
-- abstract `Commander` base class
-- runtime-neutral contracts and shared execution engine
+Purpose:
 
-Important files:
+- typed mission DSL
+- shared mission/runtime contracts
+- validation helpers
+- retry/timer metadata
+- shared execution engine
+- abstract `Commander` base class
+
+Key files:
+
 - `packages/core/src/mission-definition.ts`
-- `packages/core/src/commander.ts`
+- `packages/core/src/types.ts`
+- `packages/core/src/schema.ts`
 - `packages/core/src/contracts.ts`
 - `packages/core/src/engine.ts`
-- `packages/core/src/schema.ts`
+- `packages/core/src/commander.ts`
 
 ### `packages/in-memory-commander`
 
-Current role:
+Purpose:
+
 - in-memory runtime implementation
-- deterministic test helpers
+- deterministic local semantics for tests and examples
 
-Important files:
-- `packages/in-memory-commander/src/commander.ts`
+Key files:
+
+- `packages/in-memory-commander/src/in-memory/commander.ts`
 - `packages/in-memory-commander/src/testing/fixtures.ts`
-- `packages/in-memory-commander/src/commander.test.ts`
-  - implemented as `src/in-memory/commander.ts` and `src/in-memory/commander.test.ts`
+- `packages/in-memory-commander/src/in-memory/commander.test.ts`
 
-### `packages/sqlite-commander`
+### `packages/postgres-commander`
 
-Current role:
-- durable SQLite runtime implementation for v1
+Purpose:
+
+- durable Postgres runtime implementation for v1
 - schema bootstrap and migrations
-- persistence, signals, timers, retries, and rehydration
+- persistence/reload/resume semantics
+- integration boundary through `execute(query: string)`
 
-Important files:
-- `packages/sqlite-commander/src/commander.ts`
-- `packages/sqlite-commander/src/store.ts`
-- `packages/sqlite-commander/src/schema.ts`
-- `packages/sqlite-commander/src/migrations/*`
-- `packages/sqlite-commander/src/*.test.ts`
+Key files:
 
-Operational note:
-- SQLite runtime and tests use Node’s built-in experimental SQLite support via `--experimental-sqlite`
+- `packages/postgres-commander/src/commander.ts`
+- `packages/postgres-commander/src/store.ts`
+- `packages/postgres-commander/src/schema.ts`
+- `packages/postgres-commander/src/sql-executor.ts`
+- `packages/postgres-commander/src/migrations/*`
+- `packages/postgres-commander/src/*.test.ts`
 
-### `examples`
+Notes:
 
-Expected examples:
-- `ask-user-for-review`
-  - human-in-the-loop flow using the public packages
-- `order-fulfillment`
-  - sequential + signal flow using the public packages
-- `durable-reminder`
-  - SQLite-backed durability and timer/reload flow
+- durable tests use `@electric-sql/pglite` when it is installed locally
+- the package itself does not depend on a specific Postgres client
 
-## Architectural direction
+## Examples
 
-The repository converges on:
+### `examples/ask-user-for-review`
 
-1. `core`: definition, semantics, shared contracts, abstract runtime base
-2. `in-memory-commander`: fast reference runtime
-3. `sqlite-commander`: durable local/dev runtime for v1
-4. `examples`: public API usage only
+- in-memory mission example
 
-## v1 semantic minimum
+### `examples/order-fulfillment`
 
-By v1 RC, the repo must clearly support:
+- in-memory sequential mission example
 
-- `start` with runtime validation
-- `step`
-- `needTo`
-- `sleep`
-- retry policies
-- inspection APIs
-- in-memory execution
-- durable SQLite execution
-- restart/reload continuity through SQLite
+### `examples/durable-reminder`
 
-## Explicitly out of scope for v1
+- Postgres-backed durability example using `PgCommander`
+- demonstrates the `execute(query)` API with PGlite
 
-- Postgres durable runtime
+## Package boundaries
+
+1. `core`: workflow DSL and shared runtime logic
+2. `in-memory-commander`: ephemeral runtime implementation
+3. `postgres-commander`: durable Postgres runtime for v1
+
+## Out of scope for v1
+
 - workflow versioning for already-running missions
-- external workflow engine bridges
-- visual builders
-- frontend-first runtime support
+- alternate durable backends
+- multi-process leasing/orchestration across separate workers
+- external workflow-engine adapters

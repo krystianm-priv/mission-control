@@ -3,11 +3,11 @@ import type { MissionInspection } from "@mission-control/core";
 export interface SerializedInspectionRow {
 	mission_id: string;
 	mission_name: string;
-	status: string;
-	cursor: number;
+	status: string | null;
+	cursor: number | string | null;
 	waiting_kind: string | null;
 	waiting_event_name: string | null;
-	waiting_node_index: number | null;
+	waiting_node_index: number | string | null;
 	timeout_at: string | null;
 	timer_due_at: string | null;
 	error_json: string | null;
@@ -52,7 +52,10 @@ export function deserializeInspection(row: SerializedInspectionRow): MissionInsp
 				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> = {
 					kind: row.waiting_kind as NonNullable<MissionInspection["snapshot"]["waiting"]>["kind"],
 					eventName: row.waiting_event_name ?? "",
-					nodeIndex: row.waiting_node_index ?? 0,
+					nodeIndex:
+						typeof row.waiting_node_index === "number"
+							? row.waiting_node_index
+							: Number.parseInt(String(row.waiting_node_index ?? 0), 10),
 				};
 				if (row.timeout_at) {
 					restored.timeoutAt = row.timeout_at;
@@ -68,8 +71,8 @@ export function deserializeInspection(row: SerializedInspectionRow): MissionInsp
 		snapshot: {
 			missionId: row.mission_id,
 			missionName: row.mission_name,
-			status: row.status as MissionInspection["snapshot"]["status"],
-			cursor: row.cursor,
+			status: (row.status ?? "idle") as MissionInspection["snapshot"]["status"],
+			cursor: typeof row.cursor === "number" ? row.cursor : Number.parseInt(String(row.cursor ?? 0), 10),
 			error: row.error_json ? JSON.parse(row.error_json) : undefined,
 			ctx: JSON.parse(row.ctx_json) as MissionInspection["snapshot"]["ctx"],
 			waiting,

@@ -47,25 +47,27 @@ export class InMemoryCommander extends Commander {
 		return this.createHandle(runtime);
 	}
 
-	public override getMission<M extends MissionDefinition<any>>(
+	public override async getMission<M extends MissionDefinition<any>>(
 		missionId: string,
-	): MissionHandle<M> | undefined {
+	): Promise<MissionHandle<M> | undefined> {
 		const runtime = this.missions.get(missionId);
 		return runtime ? this.createHandle(runtime as EngineRuntime) : undefined;
 	}
 
-	public override loadMission(missionId: string): MissionInspection | undefined {
+	public override async loadMission(
+		missionId: string,
+	): Promise<MissionInspection | undefined> {
 		const runtime = this.missions.get(missionId);
 		return runtime ? inspectRuntime(runtime) : undefined;
 	}
 
-	public override listWaiting(): MissionSnapshot[] {
+	public override async listWaiting(): Promise<MissionSnapshot[]> {
 		return [...this.missions.values()]
 			.filter((runtime) => runtime.snapshot.status === "waiting")
 			.map((runtime) => structuredClone(runtime.snapshot));
 	}
 
-	public override listScheduled(): MissionSnapshot[] {
+	public override async listScheduled(): Promise<MissionSnapshot[]> {
 		return [...this.missions.values()]
 			.filter((runtime) => runtime.snapshot.waiting?.kind !== undefined && runtime.snapshot.waiting.kind !== "signal")
 			.map((runtime) => structuredClone(runtime.snapshot));

@@ -6,7 +6,7 @@ The v1 release candidate ships three publishable packages:
 
 - `@mission-control/core`
 - `@mission-control/in-memory-commander`
-- `@mission-control/sqlite-commander`
+- `@mission-control/postgres-commander`
 
 ## What it ships today
 
@@ -19,12 +19,11 @@ The v1 release candidate ships three publishable packages:
 - inspection APIs for mission snapshot, history, attempts, signals, and timers
 - an explicit abstract `Commander` base class in core
 - an in-memory runtime for tests and fast local execution
-- a durable SQLite runtime that persists state and resumes after reload
+- a durable Postgres runtime that persists state and resumes after reload
 
 ## What v1 does not include
 
 - workflow versioning for already-running missions
-- Postgres
 - adapters to Temporal, DBOS, RabbitMQ, or other workflow engines
 - visual builders
 - browser-first runtimes
@@ -48,22 +47,32 @@ Owns:
 - the `InMemoryCommander` implementation
 - deterministic testing helpers
 
-### `@mission-control/sqlite-commander`
+### `@mission-control/postgres-commander`
 
 Owns:
 
-- the `SQLiteCommander` implementation
+- the `PgCommander` implementation
 - schema bootstrap and migrations
 - durable persistence for waits, retries, timers, and inspection state
-- restart-safe local/dev durability using SQLite
+- restart-safe reload and resume
+- a minimal `execute(query: string)` integration boundary
 
 ## Requirements
 
 - Node.js `22.11+`
 - `zod` in your app if you use Zod schemas
 
-`@mission-control/sqlite-commander` uses Node’s built-in experimental SQLite support.
-That means SQLite examples and tests run with `node --experimental-sqlite ...`.
+`@mission-control/postgres-commander` does not require a specific client library.
+You provide a single `execute(query: string)` function that runs raw SQL against Postgres.
+
+```ts
+const commander = new PgCommander({
+	definitions: [durableReminderMission],
+	execute: (query) => db.execute(query),
+});
+```
+
+The durable test suite uses `@electric-sql/pglite` when it is installed locally so the repo can verify Postgres semantics without external infrastructure.
 
 ## Quick start
 
@@ -95,14 +104,14 @@ await mission.signal("receive-approval", { approvedBy: "reviewer-1" });
 console.log(mission.inspect());
 ```
 
-## Durable SQLite example
+## Durable Postgres example
 
 ```ts
-import { join } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
 import { z } from "zod";
 
 import { m } from "@mission-control/core";
-import { SQLiteCommander } from "@mission-control/sqlite-commander";
+import { PgCommander } from "@mission-control/postgres-commander";
 
 const reminderMission = m
 	.define("reminder")
@@ -117,15 +126,17 @@ const reminderMission = m
 	}))
 	.end();
 
-const commander = new SQLiteCommander({
-	databasePath: join(process.cwd(), "mission-control.sqlite"),
+const db = await PGlite.create("./mission-control-pgdata");
+
+const commander = new PgCommander({
 	definitions: [reminderMission],
+	execute: (query) => db.exec(query),
 });
 
 const mission = commander.createMission(reminderMission);
 await mission.start({
 	recipient: "hello@example.com",
-	message: "This mission survives process reloads through SQLite state.",
+	message: "This mission survives process reloads through durable Postgres state.",
 });
 await mission.waitForCompletion();
 ```

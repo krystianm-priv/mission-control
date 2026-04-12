@@ -4,7 +4,7 @@
 
 Use this file as the default operating manual for coding agents working in this repository.
 
-The goal is to ship a truthful `mission-control` v1 release candidate whose next literal step is `npm publish`.
+The goal is to ship `mission-control` v1 as a real release candidate whose immediate next step is `npm publish`.
 
 Read these files first, in order:
 
@@ -19,22 +19,19 @@ Ship a real TypeScript workflow runtime with:
 
 - `@mission-control/core`
 - `@mission-control/in-memory-commander`
-- `@mission-control/sqlite-commander`
+- `@mission-control/postgres-commander`
 
 v1 must include:
 
 - typed mission definitions
-- runtime input validation
-- a real abstract `Commander` base class in `@mission-control/core`
 - a solid in-memory commander
-- a durable SQLite commander
+- a durable Postgres commander
 - retries
 - timers
 - inspection APIs
-- restart-safe local durability through SQLite
+- restart-safe reload/resume for the Postgres runtime
 
 v1 does **not** include workflow versioning for already-running missions.
-Postgres is **not** part of v1. It belongs to v1.1 and later.
 
 ## Hard boundaries
 
@@ -44,7 +41,6 @@ Do not do any of the following unless the roadmap explicitly requires it:
 - do not add visual builders
 - do not redesign the project into a generic BPM platform
 - do not add browser-first runtime support
-- do not leave singleton commander globals in the public API
 - do not sneak in large refactors unrelated to the current roadmap task
 - do not change the mission DSL philosophy into config-first JSON
 
@@ -56,7 +52,7 @@ Treat these areas as the primary product surface:
 
 - `packages/core`
 - `packages/in-memory-commander`
-- `packages/sqlite-commander`
+- `packages/postgres-commander`
 - `examples/*`
 - root docs (`README.md`, `ROADMAP.md`, `SOURCEMAP.md`, package READMEs)
 
@@ -67,8 +63,6 @@ When task instructions conflict:
 1. the current task in `ROADMAP.md` wins
 2. then this `AGENTS.md`
 3. then the current codebase structure
-
-Do not work from vague intuitions when the roadmap is specific.
 
 ## Task selection protocol
 
@@ -82,8 +76,6 @@ At the start of each session:
 6. Add or update tests.
 7. Update any docs/exports touched by the change.
 8. Mark the task complete in `ROADMAP.md` only when it is actually done.
-
-If a task is too large to complete cleanly in one session, split it into smaller child tasks directly under the same milestone before changing code.
 
 ## Execution rules
 
@@ -99,25 +91,21 @@ Prefer stricter, explicit types.
 
 Do not weaken types to get around compiler problems.
 
-Do not add `any` unless there is no practical alternative and the choice is localized and justified.
-
 ### 3. Preserve the architecture
 
 The intended architecture is:
 
-- `core`: mission DSL, shared types, validation helpers, retry/timer metadata, abstract commander base, runtime-neutral contracts
-- `in-memory-commander`: in-memory runtime implementation only
-- `sqlite-commander`: durable SQLite-backed runtime only
-
-Do not collapse these boundaries casually.
+- `core`: workflow definition DSL, validation, shared contracts, shared engine, abstract `Commander`
+- `in-memory-commander`: in-memory runtime
+- `postgres-commander`: durable Postgres-backed runtime behind an `execute(query: string)` boundary
 
 ### 4. Shared engine first
 
-If logic is needed by both commanders, put it in `@mission-control/core` behind runtime-neutral contracts instead of duplicating it.
+If logic is needed by both commanders, put it behind shared runtime contracts instead of duplicating it.
 
-### 5. SQLite-specific logic stays SQLite-specific
+### 5. Postgres-specific logic stays Postgres-specific
 
-Schema, migrations, SQL, persistence, durable timers, recovery, and idempotency constraints specific to SQLite belong in `sqlite-commander`, not in `core`.
+Schema, SQL persistence, durable timers, and recovery rules specific to Postgres belong in `postgres-commander`, not in `core`.
 
 ### 6. Do not over-design
 
@@ -129,7 +117,7 @@ Do not add speculative abstractions for imagined future backends.
 
 A roadmap task is not complete without tests appropriate to the change.
 
-Use focused unit tests for local logic and integration tests for SQLite durability, retries, timers, and restart/reload behavior.
+Use focused unit tests for local logic and PGlite-backed tests for durable Postgres semantics when the dependency is available locally.
 
 ### 8. Docs are part of the task
 
@@ -155,11 +143,10 @@ A task is done only when all of the following are true:
 You may edit `ROADMAP.md` only to:
 
 - mark tasks complete
-- add narrowly scoped child tasks when a parent task is too large
+- add narrowly scoped child tasks when implementation reveals a missing release-bar item
 - clarify wording where the implementation revealed ambiguity
-- move Postgres work explicitly to v1.1 when v1 truth requires it
 
-Do not silently redefine v1.
+Do not silently redefine v1 away from the actual shipped packages.
 
 ## Preferred working pattern
 
@@ -189,16 +176,3 @@ End each session with exactly these sections:
 
 ### Next prompt
 - `pick the logically next task from ROADMAP.md`
-
-## Notes on ambition
-
-v1 succeeds only by shipping the roadmap honestly.
-
-That means:
-
-- get the SQLite commander real
-- get the semantics clear
-- get the examples convincing
-- avoid architecture wandering
-
-Ship the next real task, not the imagined future platform.
