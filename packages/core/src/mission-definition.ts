@@ -141,9 +141,10 @@ function makeChainBuilder<E extends EventsMap>(
 				},
 			];
 
-			return makeChainBuilder<
-				AddEvent<E, typeof eventName, SleepEventRecord>
-			>(missionName, nextNodes);
+			return makeChainBuilder<AddEvent<E, typeof eventName, SleepEventRecord>>(
+				missionName,
+				nextNodes,
+			);
 		},
 
 		end() {

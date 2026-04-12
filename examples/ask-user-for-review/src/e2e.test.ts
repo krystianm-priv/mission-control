@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
 import { MissionValidationError } from "@mission-control/core";
+import { InMemoryCommander } from "@mission-control/in-memory-commander";
 
 import { askForReviewMission } from "./mission-definition.ts";
 

@@ -48,12 +48,12 @@ test("SQLiteCommander survives reload for waiting signal missions", async () => 
 			.define("approval")
 			.start({
 				input: {
-					parse: i => i as { email: string },
+					parse: (i) => i as { email: string },
 				},
 				run: async ({ ctx }) => ({ email: ctx.events.start.input.email }),
 			})
 			.needTo("receive-approval", {
-				parse: i => i as { approvedBy: string },
+				parse: (i) => i as { approvedBy: string },
 			})
 			.step("archive", async ({ ctx }) => ({
 				approvedBy: ctx.events["receive-approval"].input.approvedBy,
@@ -93,7 +93,7 @@ test("SQLiteCommander resumes sleep timers after reload", async () => {
 			.define("reminder")
 			.start({
 				input: {
-					parse: i => i as { id: string },
+					parse: (i) => i as { id: string },
 				},
 				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
 			})
@@ -136,7 +136,7 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 			.define("retry-durable")
 			.start({
 				input: {
-					parse: i => i as { id: string },
+					parse: (i) => i as { id: string },
 				},
 				run: async () => ({ ok: true }),
 			})

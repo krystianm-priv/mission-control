@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
 import {
-	MissionValidationError,
 	MissionSignalError,
+	MissionValidationError,
 } from "@mission-control/core";
+import { InMemoryCommander } from "@mission-control/in-memory-commander";
 
 import { orderFulfillmentMission } from "./mission-definition.ts";
 
@@ -59,7 +58,8 @@ test("e2e: full happy path", async () => {
 	assert.ok(state.snapshot.ctx.events["notify-shipment"]?.output);
 
 	assert.equal(
-		(state.snapshot.ctx.events["close-order"]?.output as { status: string }).status,
+		(state.snapshot.ctx.events["close-order"]?.output as { status: string })
+			.status,
 		"completed",
 	);
 });

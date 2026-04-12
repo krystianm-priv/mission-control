@@ -16,7 +16,7 @@ export const askForReviewMission = m
 					email: z.email(),
 				});
 				return schema.parse(i);
-			}
+			},
 		},
 		run: async ({ ctx }) => {
 			return {

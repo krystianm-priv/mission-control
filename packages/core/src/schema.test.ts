@@ -43,7 +43,6 @@ test("parseMissionInput throws MissionValidationError for invalid input", () => 
 				email: "bad-email",
 			}),
 		(error) =>
-			error instanceof MissionValidationError &&
-			error.eventName === "start",
+			error instanceof MissionValidationError && error.eventName === "start",
 	);
 });
