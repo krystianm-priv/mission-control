@@ -1,17 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { z } from "zod";
-
-import { m, MissionSignalError, MissionValidationError } from "@mission-control/core";
-import { InMemoryCommander } from "./commander.js";
+import {
+	MissionSignalError,
+	MissionValidationError,
+	m,
+} from "@mission-control/core";
+import { z } from "zod/v4";
 import { FakeClock } from "../testing/fixtures.js";
+import { InMemoryCommander } from "./commander.js";
 
 test("in-memory commander runs successful start, wait, signal, and completion flow", async () => {
 	const mission = m
 		.define("approval-flow")
 		.start({
 			input: z.strictObject({ email: z.email() }),
-			run: async ({ ctx }) => ({ normalizedEmail: ctx.events.start.input.email }),
+			run: async ({ ctx }) => ({
+				normalizedEmail: ctx.events.start.input.email,
+			}),
 		})
 		.step("send-email", async ({ ctx }) => ({
 			sentTo: ctx.events.start.output.normalizedEmail,
@@ -22,7 +27,9 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 		}))
 		.end();
 
-	const commander = new InMemoryCommander({ createMissionId: () => "mission-1" });
+	const commander = new InMemoryCommander({
+		createMissionId: () => "mission-1",
+	});
 	const handle = commander.createMission(mission);
 
 	await handle.start({ email: "hello@example.com" });
@@ -34,7 +41,8 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 
 	const inspection = handle.inspect();
 	assert.equal(
-		(inspection.snapshot.ctx.events.archive?.output as { approvedBy: string }).approvedBy,
+		(inspection.snapshot.ctx.events.archive?.output as { approvedBy: string })
+			.approvedBy,
 		"ops",
 	);
 	assert.equal(
@@ -52,10 +60,15 @@ test("invalid start input fails fast with MissionValidationError", async () => {
 		})
 		.end();
 
-	const commander = new InMemoryCommander({ createMissionId: () => "mission-2" });
+	const commander = new InMemoryCommander({
+		createMissionId: () => "mission-2",
+	});
 	const handle = commander.createMission(mission);
 
-	await assert.rejects(() => handle.start({ email: "nope" }), MissionValidationError);
+	await assert.rejects(
+		() => handle.start({ email: "nope" }),
+		MissionValidationError,
+	);
 	assert.equal(handle.status, "failed");
 });
 
@@ -69,7 +82,9 @@ test("wrong signal name fails clearly", async () => {
 		.needTo("expected", z.object({ value: z.string() }))
 		.end();
 
-	const commander = new InMemoryCommander({ createMissionId: () => "mission-3" });
+	const commander = new InMemoryCommander({
+		createMissionId: () => "mission-3",
+	});
 	const handle = commander.createMission(mission);
 
 	await handle.start({ id: "123" });
@@ -104,12 +119,19 @@ test("step retry policy retries before succeeding", async () => {
 		)
 		.end();
 
-	const commander = new InMemoryCommander({ createMissionId: () => "mission-4" });
+	const commander = new InMemoryCommander({
+		createMissionId: () => "mission-4",
+	});
 	const handle = commander.createMission(mission);
 
 	await handle.start({ id: "123" });
 	assert.equal(handle.status, "completed");
-	assert.equal(handle.inspect().stepAttempts.filter((attempt) => attempt.stepName === "unstable").length, 3);
+	assert.equal(
+		handle
+			.inspect()
+			.stepAttempts.filter((attempt) => attempt.stepName === "unstable").length,
+		3,
+	);
 });
 
 test("sleep nodes schedule automatic timer wakeups", async () => {
@@ -176,7 +198,9 @@ test("inspection APIs expose history, signals, timers, and context accumulation"
 		})
 		.sleep("pause", 10)
 		.needTo("resume", z.object({ value: z.string() }))
-		.step("finish", async ({ ctx }) => ({ value: ctx.events.resume.input.value }))
+		.step("finish", async ({ ctx }) => ({
+			value: ctx.events.resume.input.value,
+		}))
 		.end();
 
 	const commander = new InMemoryCommander({

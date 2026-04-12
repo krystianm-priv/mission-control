@@ -3,14 +3,14 @@ import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
 import { migration0001Init } from "./migrations/0001_init.js";
 import {
 	deserializeInspection,
-	serializeInspection,
 	type SerializedInspectionRow,
+	serializeInspection,
 } from "./serialization.js";
 import {
 	executeRows,
 	executeStatement,
-	sqlLiteral,
 	type PgCommanderExecute,
+	sqlLiteral,
 } from "./sql-executor.js";
 
 export interface PgStoreOptions {
@@ -36,7 +36,9 @@ export class PgStore {
 			`SELECT created_at FROM mc_missions WHERE mission_id = ${sqlLiteral(inspection.snapshot.missionId)}`,
 		);
 		const existingCreatedAt =
-			typeof existingRows[0]?.created_at === "string" ? existingRows[0].created_at : undefined;
+			typeof existingRows[0]?.created_at === "string"
+				? existingRows[0].created_at
+				: undefined;
 		const row = serializeInspection(inspection, existingCreatedAt);
 		await executeStatement(
 			this.execute,
@@ -82,7 +84,9 @@ export class PgStore {
 		);
 	}
 
-	public async loadInspection(missionId: string): Promise<MissionInspection | undefined> {
+	public async loadInspection(
+		missionId: string,
+	): Promise<MissionInspection | undefined> {
 		const rows = await executeRows(
 			this.execute,
 			`SELECT * FROM mc_missions WHERE mission_id = ${sqlLiteral(missionId)}`,
@@ -96,7 +100,11 @@ export class PgStore {
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status = 'waiting' ORDER BY updated_at ASC",
 		);
-		return rows.map((row) => deserializeInspection(row as unknown as SerializedInspectionRow).snapshot);
+		return rows.map(
+			(row) =>
+				deserializeInspection(row as unknown as SerializedInspectionRow)
+					.snapshot,
+		);
 	}
 
 	public async listScheduledSnapshots(): Promise<MissionSnapshot[]> {
@@ -104,7 +112,11 @@ export class PgStore {
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') ORDER BY timer_due_at ASC",
 		);
-		return rows.map((row) => deserializeInspection(row as unknown as SerializedInspectionRow).snapshot);
+		return rows.map(
+			(row) =>
+				deserializeInspection(row as unknown as SerializedInspectionRow)
+					.snapshot,
+		);
 	}
 
 	public async listRecoverableInspections(): Promise<MissionInspection[]> {
@@ -112,6 +124,8 @@ export class PgStore {
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
 		);
-		return rows.map((row) => deserializeInspection(row as unknown as SerializedInspectionRow));
+		return rows.map((row) =>
+			deserializeInspection(row as unknown as SerializedInspectionRow),
+		);
 	}
 }

@@ -9,7 +9,7 @@ export interface EventRecord {
 
 export type EventsMap = Record<string, EventRecord>;
 
-export interface MissionContext<E extends EventsMap> {
+export interface MissionContext<E extends EventsMap = EventsMap> {
 	missionId: string;
 	events: E;
 }
@@ -28,13 +28,13 @@ export type AssertNewEventName<
 export interface StartNode {
 	kind: "start";
 	inputSchema: AnyInputSchema;
-	run: (args: { ctx: MissionContext<any> }) => Promise<any>;
+	run: (args: { ctx: MissionContext }) => Promise<unknown>;
 }
 
 export interface StepNode {
 	kind: "step";
 	name: string;
-	run: (args: { ctx: MissionContext<any> }) => Promise<any>;
+	run: (args: { ctx: MissionContext }) => Promise<unknown>;
 	retryPolicy: RetryPolicy;
 }
 
@@ -73,18 +73,18 @@ export interface MissionStaticDefinition {
 	>;
 }
 
-export interface MissionDefinition<E extends EventsMap> {
+export interface MissionDefinition<E extends EventsMap = EventsMap> {
 	missionName: string;
 	nodes: MissionNode[];
 	toStatic(): MissionStaticDefinition;
 	context: MissionContext<E>;
 }
 
-export type ExternalEventNames<M extends MissionDefinition<any>> = {
+export type ExternalEventNames<M extends MissionDefinition> = {
 	[K in keyof M["context"]["events"]]: M["context"]["events"][K] extends {
-		input: any;
+		input: unknown;
 	}
-		? M["context"]["events"][K] extends { output: any }
+		? M["context"]["events"][K] extends { output: unknown }
 			? never
 			: K
 		: never;

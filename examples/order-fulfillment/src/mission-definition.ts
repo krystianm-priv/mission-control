@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { m } from "@mission-control/core";
+import { z } from "zod/v4";
 import {
 	fakeCreateShipment,
 	fakeInventoryCheck,

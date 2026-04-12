@@ -1,19 +1,19 @@
 import {
 	Commander,
-	createEngineRuntime,
-	hydrateEngineRuntime,
-	inspectRuntime,
-	recoverRuntime,
-	signalRuntime,
-	startRuntime,
-	waitForCompletion,
 	type CommanderCreateOptions,
 	type CommanderOptions,
+	createEngineRuntime,
 	type EngineRuntime,
+	hydrateEngineRuntime,
+	inspectRuntime,
 	type MissionDefinition,
 	type MissionHandle,
 	type MissionInspection,
 	type MissionSnapshot,
+	recoverRuntime,
+	signalRuntime,
+	startRuntime,
+	waitForCompletion,
 } from "@mission-control/core";
 
 import { SQLiteStore } from "./store.js";
@@ -40,7 +40,7 @@ export class SQLiteCommander extends Commander {
 		this.store.close();
 	}
 
-	public override createMission<M extends MissionDefinition<any>>(
+	public override createMission<M extends MissionDefinition>(
 		definition: M,
 		options: CommanderCreateOptions = {},
 	): MissionHandle<M> {
@@ -52,20 +52,22 @@ export class SQLiteCommander extends Commander {
 		return this.createHandle(runtime);
 	}
 
-	public override getMission<M extends MissionDefinition<any>>(
+	public override async getMission<M extends MissionDefinition>(
 		missionId: string,
-	): MissionHandle<M> | undefined {
+	): Promise<MissionHandle<M> | undefined> {
 		const existing = this.runtimes.get(missionId);
 		if (existing) {
 			return this.createHandle(existing as EngineRuntime);
 		}
 
-		const inspection = this.store.loadInspection(missionId);
+		const inspection = await this.store.loadInspection(missionId);
 		if (!inspection) {
 			return undefined;
 		}
 
-		const definition = this.getRegisteredMission(inspection.snapshot.missionName);
+		const definition = this.getRegisteredMission(
+			inspection.snapshot.missionName,
+		);
 		if (!definition) {
 			return undefined;
 		}
@@ -76,21 +78,25 @@ export class SQLiteCommander extends Commander {
 		return this.createHandle(runtime as EngineRuntime);
 	}
 
-	public override loadMission(missionId: string): MissionInspection | undefined {
+	public override async loadMission(
+		missionId: string,
+	): Promise<MissionInspection | undefined> {
 		return this.store.loadInspection(missionId);
 	}
 
-	public override listWaiting(): MissionSnapshot[] {
+	public override async listWaiting(): Promise<MissionSnapshot[]> {
 		return this.store.listWaitingSnapshots();
 	}
 
-	public override listScheduled(): MissionSnapshot[] {
+	public override async listScheduled(): Promise<MissionSnapshot[]> {
 		return this.store.listScheduledSnapshots();
 	}
 
 	private recoverPersistedRuntimes(): void {
 		for (const inspection of this.store.listRecoverableInspections()) {
-			const definition = this.getRegisteredMission(inspection.snapshot.missionName);
+			const definition = this.getRegisteredMission(
+				inspection.snapshot.missionName,
+			);
 			if (!definition) {
 				continue;
 			}
@@ -101,34 +107,30 @@ export class SQLiteCommander extends Commander {
 	}
 
 	private createPersistedRuntime(
-		definition: MissionDefinition<any>,
+		definition: MissionDefinition,
 		missionId: string,
 	): EngineRuntime {
-		let runtime!: EngineRuntime;
-		runtime = createEngineRuntime(definition, missionId, {
+		return createEngineRuntime(definition, missionId, {
 			clock: this.clock,
 			persist: (activeRuntime) => {
 				this.store.saveInspection(inspectRuntime(activeRuntime));
 			},
 		});
-		return runtime;
 	}
 
 	private hydratePersistedRuntime(
-		definition: MissionDefinition<any>,
+		definition: MissionDefinition,
 		inspection: MissionInspection,
 	): EngineRuntime {
-		let runtime!: EngineRuntime;
-		runtime = hydrateEngineRuntime(definition, inspection, {
+		return hydrateEngineRuntime(definition, inspection, {
 			clock: this.clock,
 			persist: (activeRuntime) => {
 				this.store.saveInspection(inspectRuntime(activeRuntime));
 			},
 		});
-		return runtime;
 	}
 
-	private createHandle<M extends MissionDefinition<any>>(
+	private createHandle<M extends MissionDefinition>(
 		runtime: EngineRuntime,
 	): MissionHandle<M> {
 		const definition = runtime.definition as M;

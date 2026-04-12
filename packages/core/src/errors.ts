@@ -13,7 +13,10 @@ export class MissionValidationError extends MissionControlError {
 	public readonly issues: unknown;
 
 	public constructor(eventName: string, issues: unknown) {
-		super("MISSION_VALIDATION_ERROR", `Invalid input for event "${eventName}".`);
+		super(
+			"MISSION_VALIDATION_ERROR",
+			`Invalid input for event "${eventName}".`,
+		);
 		this.eventName = eventName;
 		this.issues = issues;
 	}
@@ -25,11 +28,7 @@ export class MissionDefinitionError extends MissionControlError {
 	}
 }
 
-export class CommanderError extends MissionControlError {
-	public constructor(code: string, message: string) {
-		super(code, message);
-	}
-}
+export class CommanderError extends MissionControlError {}
 
 export class MissionAlreadyStartedError extends CommanderError {
 	public constructor(status: string) {

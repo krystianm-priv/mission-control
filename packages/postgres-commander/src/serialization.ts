@@ -35,7 +35,9 @@ export function serializeInspection(
 		waiting_node_index: inspection.snapshot.waiting?.nodeIndex ?? null,
 		timeout_at: inspection.snapshot.waiting?.timeoutAt ?? null,
 		timer_due_at: inspection.snapshot.waiting?.timerDueAt ?? null,
-		error_json: inspection.snapshot.error ? JSON.stringify(inspection.snapshot.error) : null,
+		error_json: inspection.snapshot.error
+			? JSON.stringify(inspection.snapshot.error)
+			: null,
 		ctx_json: JSON.stringify(inspection.snapshot.ctx),
 		history_json: JSON.stringify(inspection.history),
 		step_attempts_json: JSON.stringify(inspection.stepAttempts),
@@ -46,17 +48,22 @@ export function serializeInspection(
 	};
 }
 
-export function deserializeInspection(row: SerializedInspectionRow): MissionInspection {
+export function deserializeInspection(
+	row: SerializedInspectionRow,
+): MissionInspection {
 	const waiting = row.waiting_kind
 		? (() => {
-				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> = {
-					kind: row.waiting_kind as NonNullable<MissionInspection["snapshot"]["waiting"]>["kind"],
-					eventName: row.waiting_event_name ?? "",
-					nodeIndex:
-						typeof row.waiting_node_index === "number"
-							? row.waiting_node_index
-							: Number.parseInt(String(row.waiting_node_index ?? 0), 10),
-				};
+				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> =
+					{
+						kind: row.waiting_kind as NonNullable<
+							MissionInspection["snapshot"]["waiting"]
+						>["kind"],
+						eventName: row.waiting_event_name ?? "",
+						nodeIndex:
+							typeof row.waiting_node_index === "number"
+								? row.waiting_node_index
+								: Number.parseInt(String(row.waiting_node_index ?? 0), 10),
+					};
 				if (row.timeout_at) {
 					restored.timeoutAt = row.timeout_at;
 				}
@@ -72,13 +79,18 @@ export function deserializeInspection(row: SerializedInspectionRow): MissionInsp
 			missionId: row.mission_id,
 			missionName: row.mission_name,
 			status: (row.status ?? "idle") as MissionInspection["snapshot"]["status"],
-			cursor: typeof row.cursor === "number" ? row.cursor : Number.parseInt(String(row.cursor ?? 0), 10),
+			cursor:
+				typeof row.cursor === "number"
+					? row.cursor
+					: Number.parseInt(String(row.cursor ?? 0), 10),
 			error: row.error_json ? JSON.parse(row.error_json) : undefined,
 			ctx: JSON.parse(row.ctx_json) as MissionInspection["snapshot"]["ctx"],
 			waiting,
 		},
 		history: JSON.parse(row.history_json) as MissionInspection["history"],
-		stepAttempts: JSON.parse(row.step_attempts_json) as MissionInspection["stepAttempts"],
+		stepAttempts: JSON.parse(
+			row.step_attempts_json,
+		) as MissionInspection["stepAttempts"],
 		signals: JSON.parse(row.signals_json) as MissionInspection["signals"],
 		timers: JSON.parse(row.timers_json) as MissionInspection["timers"],
 	};

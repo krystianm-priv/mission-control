@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { z } from "zod";
-
-import { m, type EngineClock } from "@mission-control/core";
+import { type EngineClock, m } from "@mission-control/core";
+import { z } from "zod/v4";
 
 import { PgCommander } from "./commander.js";
 
@@ -26,7 +25,11 @@ class FakeClock implements EngineClock {
 	public async advanceBy(ms: number): Promise<void> {
 		this.nowMs += ms;
 		const ready = this.tasks.filter((task) => task.dueAt <= this.nowMs);
-		this.tasks.splice(0, this.tasks.length, ...this.tasks.filter((task) => task.dueAt > this.nowMs));
+		this.tasks.splice(
+			0,
+			this.tasks.length,
+			...this.tasks.filter((task) => task.dueAt > this.nowMs),
+		);
 		for (const task of ready) {
 			task.resolve();
 			await Promise.resolve();
@@ -78,7 +81,9 @@ test("PgCommander survives reload for waiting signal missions", async () => {
 				run: async ({ ctx }) => ({ email: ctx.events.start.input.email }),
 			})
 			.needTo("receive-approval", z.object({ approvedBy: z.string() }))
-			.step("archive", async ({ ctx }) => ({ approvedBy: ctx.events["receive-approval"].input.approvedBy }))
+			.step("archive", async ({ ctx }) => ({
+				approvedBy: ctx.events["receive-approval"].input.approvedBy,
+			}))
 			.end();
 
 		const commander1 = new PgCommander({
@@ -94,7 +99,8 @@ test("PgCommander survives reload for waiting signal missions", async () => {
 			execute: await harness.createExecute(),
 			definitions: [mission],
 		});
-		const loaded = await commander2.getMission<typeof mission>("mission-signal");
+		const loaded =
+			await commander2.getMission<typeof mission>("mission-signal");
 		assert.ok(loaded);
 		await loaded.signal("receive-approval", { approvedBy: "ops" });
 		await loaded.waitForCompletion();

@@ -47,7 +47,9 @@ export async function executeRows(
 	return [];
 }
 
-export function sqlLiteral(value: boolean | number | string | null | undefined): string {
+export function sqlLiteral(
+	value: boolean | number | string | null | undefined,
+): string {
 	if (value === null || value === undefined) {
 		return "NULL";
 	}

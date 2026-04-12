@@ -5,7 +5,9 @@
 		"allowImportingTsExtensions": true,
 		"paths": {
 			"@mission-control/core": ["../../packages/core/src/index.ts"],
-			"@mission-control/in-memory-commander": ["../../packages/in-memory-commander/src/index.ts"]
+			"@mission-control/in-memory-commander": [
+				"../../packages/in-memory-commander/src/index.ts"
+			]
 		}
 	},
 	"include": ["src/**/*.ts"]

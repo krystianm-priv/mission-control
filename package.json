@@ -2,21 +2,11 @@
 	"name": "mission-control",
 	"type": "module",
 	"private": true,
-	"packageManager": "npm@10.9.0",
-	"scripts": {
-		"build": "turbo run build",
-		"check-types": "turbo run check-types",
-		"dev": "turbo run dev",
-		"lint": "turbo run lint",
-		"test": "turbo run test",
-		"release:check": "npm run build && npm run check-types && npm run test && npm run release:pack",
-		"release:pack": "npm_config_cache=/tmp/mission-control-npm-cache npm pack --workspace @mission-control/core --workspace @mission-control/in-memory-commander --workspace @mission-control/postgres-commander --dry-run"
-	},
+	"packageManager": "bun@1.13.11",
 	"devDependencies": {
 		"@biomejs/biome": "2.3.13",
-		"@types/node": "^25.2.0",
-		"turbo": "^2.8.1",
-		"typescript": "5.9.2"
+		"@types/node": "^24",
+		"typescript": "6.0.2"
 	},
 	"workspaces": [
 		"apps/*",

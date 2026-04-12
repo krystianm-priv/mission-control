@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { z } from "zod";
+import { z } from "zod/v4";
 
 import { MissionValidationError } from "./errors.js";
 import { parseMissionInput } from "./schema.js";

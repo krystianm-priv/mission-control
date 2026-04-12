@@ -1,8 +1,9 @@
 import {
 	Commander,
-	type CommanderOptions,
 	type CommanderCreateOptions,
+	type CommanderOptions,
 	createEngineRuntime,
+	type EngineRuntime,
 	inspectRuntime,
 	type MissionDefinition,
 	type MissionHandle,
@@ -12,8 +13,6 @@ import {
 	signalRuntime,
 	startRuntime,
 	waitForCompletion,
-	type EngineClock,
-	type EngineRuntime,
 } from "@mission-control/core";
 
 export interface InMemoryCommanderOptions extends CommanderOptions {}
@@ -34,7 +33,7 @@ export class InMemoryCommander extends Commander {
 		super(baseOptions);
 	}
 
-	public override createMission<M extends MissionDefinition<any>>(
+	public override createMission<M extends MissionDefinition>(
 		definition: M,
 		options: CommanderCreateOptions = {},
 	): MissionHandle<M> {
@@ -47,7 +46,7 @@ export class InMemoryCommander extends Commander {
 		return this.createHandle(runtime);
 	}
 
-	public override async getMission<M extends MissionDefinition<any>>(
+	public override async getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<MissionHandle<M> | undefined> {
 		const runtime = this.missions.get(missionId);
@@ -69,11 +68,15 @@ export class InMemoryCommander extends Commander {
 
 	public override async listScheduled(): Promise<MissionSnapshot[]> {
 		return [...this.missions.values()]
-			.filter((runtime) => runtime.snapshot.waiting?.kind !== undefined && runtime.snapshot.waiting.kind !== "signal")
+			.filter(
+				(runtime) =>
+					runtime.snapshot.waiting?.kind !== undefined &&
+					runtime.snapshot.waiting.kind !== "signal",
+			)
 			.map((runtime) => structuredClone(runtime.snapshot));
 	}
 
-	private createHandle<M extends MissionDefinition<any>>(
+	private createHandle<M extends MissionDefinition>(
 		runtime: EngineRuntime,
 	): MissionHandle<M> {
 		const definition = runtime.definition as M;

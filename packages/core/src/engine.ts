@@ -1,12 +1,3 @@
-import { getRetryDelayMs } from "./retry-policy.js";
-import { parseMissionInput } from "./schema.js";
-import type {
-	MissionDefinition,
-	MissionNode,
-	NeedToNode,
-	SleepNode,
-	StepNode,
-} from "./types.js";
 import type {
 	MissionHistoryRecord,
 	MissionInspection,
@@ -20,6 +11,15 @@ import {
 	MissionExecutionError,
 	MissionSignalError,
 } from "./errors.js";
+import { getRetryDelayMs } from "./retry-policy.js";
+import { parseMissionInput } from "./schema.js";
+import type {
+	MissionDefinition,
+	MissionNode,
+	NeedToNode,
+	SleepNode,
+	StepNode,
+} from "./types.js";
 
 export interface EngineClock {
 	now(): Date;
@@ -44,7 +44,7 @@ export interface EngineRuntime {
 	stepAttempts: StepAttemptRecord[];
 	signals: SignalRecord[];
 	timers: TimerRecord[];
-	definition: MissionDefinition<any>;
+	definition: MissionDefinition;
 	clock: EngineClock;
 	activeSignalToken: symbol | undefined;
 	scheduledToken: symbol | undefined;
@@ -85,7 +85,10 @@ function toErrorShape(error: unknown) {
 	return { message: String(error) };
 }
 
-function appendHistory(runtime: EngineRuntime, record: MissionHistoryRecord): void {
+function appendHistory(
+	runtime: EngineRuntime,
+	record: MissionHistoryRecord,
+): void {
 	runtime.history.push(record);
 }
 
@@ -110,14 +113,19 @@ function settleCompletion(runtime: EngineRuntime): void {
 	}
 }
 
-async function setFailure(runtime: EngineRuntime, error: unknown): Promise<void> {
+async function setFailure(
+	runtime: EngineRuntime,
+	error: unknown,
+): Promise<void> {
 	runtime.snapshot.status = "failed";
 	runtime.snapshot.error = toErrorShape(error);
 	runtime.snapshot.waiting = undefined;
 	appendHistory(runtime, {
 		type: "mission-failed",
 		at: runtime.clock.now().toISOString(),
-		details: { message: runtime.snapshot.error?.message ?? "Unknown mission failure." },
+		details: {
+			message: runtime.snapshot.error?.message ?? "Unknown mission failure.",
+		},
 	});
 	await persistRuntime(runtime);
 	settleCompletion(runtime);
@@ -130,7 +138,12 @@ function getLatestScheduledTimer(
 ): TimerRecord | undefined {
 	return [...runtime.timers]
 		.reverse()
-		.find((timer) => timer.eventName === eventName && timer.kind === kind && timer.status === "scheduled");
+		.find(
+			(timer) =>
+				timer.eventName === eventName &&
+				timer.kind === kind &&
+				timer.status === "scheduled",
+		);
 }
 
 async function scheduleStoredWakeup(
@@ -188,7 +201,9 @@ async function scheduleTimerWait(
 	nodeIndex: number,
 ): Promise<void> {
 	const scheduledAt = runtime.clock.now().toISOString();
-	const dueAt = new Date(runtime.clock.now().getTime() + node.durationMs).toISOString();
+	const dueAt = new Date(
+		runtime.clock.now().getTime() + node.durationMs,
+	).toISOString();
 	runtime.timers.push({
 		eventName: node.name,
 		kind: "sleep",
@@ -283,7 +298,9 @@ async function scheduleNeedToTimeout(
 		return;
 	}
 
-	const dueAt = new Date(runtime.clock.now().getTime() + node.timeout.afterMs).toISOString();
+	const dueAt = new Date(
+		runtime.clock.now().getTime() + node.timeout.afterMs,
+	).toISOString();
 	runtime.snapshot.waiting = {
 		kind: "signal",
 		eventName: node.name,
@@ -294,22 +311,31 @@ async function scheduleNeedToTimeout(
 
 	const token = Symbol(`${node.name}:timeout`);
 	runtime.scheduledToken = token;
-	void runtime.clock.sleep(Math.max(0, new Date(dueAt).getTime() - runtime.clock.now().getTime())).then(async () => {
-		if (runtime.scheduledToken !== token) {
-			return;
-		}
-		await setFailure(
-			runtime,
-			new MissionSignalError(
-				node.timeout?.errorMessage ?? `Timed out waiting for signal "${node.name}".`,
-			),
-		);
-	});
+	void runtime.clock
+		.sleep(
+			Math.max(0, new Date(dueAt).getTime() - runtime.clock.now().getTime()),
+		)
+		.then(async () => {
+			if (runtime.scheduledToken !== token) {
+				return;
+			}
+			await setFailure(
+				runtime,
+				new MissionSignalError(
+					node.timeout?.errorMessage ??
+						`Timed out waiting for signal "${node.name}".`,
+				),
+			);
+		});
 }
 
-async function executeStep(runtime: EngineRuntime, node: StepNode): Promise<void> {
+async function executeStep(
+	runtime: EngineRuntime,
+	node: StepNode,
+): Promise<void> {
 	const nextAttemptNumber =
-		runtime.stepAttempts.filter((attempt) => attempt.stepName === node.name).length + 1;
+		runtime.stepAttempts.filter((attempt) => attempt.stepName === node.name)
+			.length + 1;
 	const attempt: StepAttemptRecord = {
 		stepName: node.name,
 		attemptNumber: nextAttemptNumber,
@@ -423,7 +449,7 @@ export async function runUntilWaitOrEnd(runtime: EngineRuntime): Promise<void> {
 }
 
 export function createEngineRuntime(
-	definition: MissionDefinition<any>,
+	definition: MissionDefinition,
 	missionId: string,
 	options: CreateEngineRuntimeOptions = {},
 ): EngineRuntime {
@@ -456,7 +482,7 @@ export function createEngineRuntime(
 }
 
 export function hydrateEngineRuntime(
-	definition: MissionDefinition<any>,
+	definition: MissionDefinition,
 	inspection: MissionInspection,
 	options: CreateEngineRuntimeOptions = {},
 ): EngineRuntime {
@@ -539,13 +565,17 @@ export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 	});
 }
 
-export async function startRuntime(runtime: EngineRuntime, input: unknown): Promise<void> {
+export async function startRuntime(
+	runtime: EngineRuntime,
+	input: unknown,
+): Promise<void> {
 	if (runtime.snapshot.status !== "idle") {
 		throw new MissionAlreadyStartedError(runtime.snapshot.status);
 	}
 
 	const startNode = runtime.definition.nodes.find(
-		(node): node is Extract<MissionNode, { kind: "start" }> => node.kind === "start",
+		(node): node is Extract<MissionNode, { kind: "start" }> =>
+			node.kind === "start",
 	);
 	if (!startNode) {
 		throw new MissionExecutionError("Mission has no start node.");
@@ -591,7 +621,9 @@ export async function signalRuntime(
 	}
 
 	if (runtime.activeSignalToken) {
-		throw new MissionSignalError(`Signal "${eventName}" is already being applied.`);
+		throw new MissionSignalError(
+			`Signal "${eventName}" is already being applied.`,
+		);
 	}
 
 	const node = runtime.definition.nodes[waiting.nodeIndex];
@@ -640,6 +672,10 @@ export function inspectRuntime(runtime: EngineRuntime): MissionInspection {
 	};
 }
 
-export function waitForCompletion(runtime: EngineRuntime): Promise<MissionSnapshot> {
-	return runtime.completion.promise.then((snapshot) => structuredClone(snapshot));
+export function waitForCompletion(
+	runtime: EngineRuntime,
+): Promise<MissionSnapshot> {
+	return runtime.completion.promise.then((snapshot) =>
+		structuredClone(snapshot),
+	);
 }

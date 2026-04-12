@@ -1,4 +1,7 @@
-const reviewRequests = new Map<string, { email: string; receivedReview?: string }>();
+const reviewRequests = new Map<
+	string,
+	{ email: string; receivedReview?: string }
+>();
 
 export const fakeMailer = async ({
 	to: _to,

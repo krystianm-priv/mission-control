@@ -25,7 +25,11 @@ export class FakeClock implements EngineClock {
 	public async advanceBy(ms: number): Promise<void> {
 		this.nowMs += ms;
 		const ready = this.tasks.filter((task) => task.dueAt <= this.nowMs);
-		this.tasks.splice(0, this.tasks.length, ...this.tasks.filter((task) => task.dueAt > this.nowMs));
+		this.tasks.splice(
+			0,
+			this.tasks.length,
+			...this.tasks.filter((task) => task.dueAt > this.nowMs),
+		);
 		for (const task of ready) {
 			task.resolve();
 			await Promise.resolve();

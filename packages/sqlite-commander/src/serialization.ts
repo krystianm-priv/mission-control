@@ -35,7 +35,9 @@ export function serializeInspection(
 		waiting_node_index: inspection.snapshot.waiting?.nodeIndex ?? null,
 		timeout_at: inspection.snapshot.waiting?.timeoutAt ?? null,
 		timer_due_at: inspection.snapshot.waiting?.timerDueAt ?? null,
-		error_json: inspection.snapshot.error ? JSON.stringify(inspection.snapshot.error) : null,
+		error_json: inspection.snapshot.error
+			? JSON.stringify(inspection.snapshot.error)
+			: null,
 		ctx_json: JSON.stringify(inspection.snapshot.ctx),
 		history_json: JSON.stringify(inspection.history),
 		step_attempts_json: JSON.stringify(inspection.stepAttempts),
@@ -46,14 +48,19 @@ export function serializeInspection(
 	};
 }
 
-export function deserializeInspection(row: SerializedInspectionRow): MissionInspection {
+export function deserializeInspection(
+	row: SerializedInspectionRow,
+): MissionInspection {
 	const waiting = row.waiting_kind
 		? (() => {
-				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> = {
-					kind: row.waiting_kind as NonNullable<MissionInspection["snapshot"]["waiting"]>["kind"],
-					eventName: row.waiting_event_name ?? "",
-					nodeIndex: row.waiting_node_index ?? 0,
-				};
+				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> =
+					{
+						kind: row.waiting_kind as NonNullable<
+							MissionInspection["snapshot"]["waiting"]
+						>["kind"],
+						eventName: row.waiting_event_name ?? "",
+						nodeIndex: row.waiting_node_index ?? 0,
+					};
 				if (row.timeout_at) {
 					restored.timeoutAt = row.timeout_at;
 				}
@@ -75,7 +82,9 @@ export function deserializeInspection(row: SerializedInspectionRow): MissionInsp
 			waiting,
 		},
 		history: JSON.parse(row.history_json) as MissionInspection["history"],
-		stepAttempts: JSON.parse(row.step_attempts_json) as MissionInspection["stepAttempts"],
+		stepAttempts: JSON.parse(
+			row.step_attempts_json,
+		) as MissionInspection["stepAttempts"],
 		signals: JSON.parse(row.signals_json) as MissionInspection["signals"],
 		timers: JSON.parse(row.timers_json) as MissionInspection["timers"],
 	};

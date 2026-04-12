@@ -1,6 +1,7 @@
 import { MissionDefinitionError } from "./errors.js";
 import { normalizeRetryPolicy, type RetryOptions } from "./retry-policy.js";
 import type { AnyInputSchema, InferInput } from "./schema.js";
+import type { NeedToOptions } from "./timer.js";
 import type {
 	AddEvent,
 	AssertNewEventName,
@@ -17,7 +18,6 @@ import type {
 	StartNode,
 	StepNode,
 } from "./types.js";
-import type { NeedToOptions } from "./timer.js";
 
 type ChainBuilder<E extends EventsMap> = {
 	step<EventName extends string, Output extends object>(
@@ -61,36 +61,33 @@ function assertDuration(durationMs: number) {
 	}
 }
 
-function toStaticNode(node: MissionNode): MissionStaticDefinition["nodes"][number] {
-	if (node.kind === "start") {
-		return { kind: "start" };
+function toStaticNode(
+	node: MissionNode,
+): MissionStaticDefinition["nodes"][number] {
+	switch (node.kind) {
+		case "start":
+			return { kind: "start" };
+		case "step":
+			return {
+				kind: "step",
+				name: node.name,
+				retryPolicy: node.retryPolicy,
+			};
+		case "needTo":
+			return {
+				kind: "needTo",
+				name: node.name,
+				timeout: node.timeout,
+			};
+		case "sleep":
+			return {
+				kind: "sleep",
+				name: node.name,
+				durationMs: node.durationMs,
+			};
+		case "end":
+			return { kind: "end" };
 	}
-
-	if (node.kind === "step") {
-		return {
-			kind: "step",
-			name: node.name,
-			retryPolicy: node.retryPolicy,
-		};
-	}
-
-	if (node.kind === "needTo") {
-		return {
-			kind: "needTo",
-			name: node.name,
-			timeout: node.timeout,
-		};
-	}
-
-	if (node.kind === "sleep") {
-		return {
-			kind: "sleep",
-			name: node.name,
-			durationMs: node.durationMs,
-		};
-	}
-
-	return { kind: "end" };
 }
 
 function makeChainBuilder<E extends EventsMap>(
@@ -98,20 +95,28 @@ function makeChainBuilder<E extends EventsMap>(
 	nodes: MissionNode[],
 ): ChainBuilder<E> {
 	return {
-		step(eventName: string, run, options) {
+		step(eventName, run, options) {
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
 					kind: "step",
 					name: eventName,
-					run,
+					// 🔑 erase generic here (safe boundary)
+					run: run as StepNode["run"],
 					retryPolicy: normalizeRetryPolicy(options),
-				} satisfies StepNode,
+				},
 			];
-			return makeChainBuilder<any>(missionName, nextNodes);
+
+			return makeChainBuilder<
+				AddEvent<
+					E,
+					typeof eventName,
+					{ output: Awaited<ReturnType<typeof run>> }
+				>
+			>(missionName, nextNodes);
 		},
 
-		needTo(eventName: string, inputSchema, options) {
+		needTo(eventName, inputSchema, options) {
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
@@ -119,26 +124,38 @@ function makeChainBuilder<E extends EventsMap>(
 					name: eventName,
 					inputSchema,
 					timeout: options?.timeout,
-				} satisfies NeedToNode,
+				},
 			];
-			return makeChainBuilder<any>(missionName, nextNodes);
+
+			return makeChainBuilder<
+				AddEvent<E, typeof eventName, NeedToInput<typeof inputSchema>>
+			>(missionName, nextNodes);
 		},
 
-		sleep(eventName: string, durationMs: number) {
+		sleep(eventName, durationMs) {
 			assertDuration(durationMs);
+
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
 					kind: "sleep",
 					name: eventName,
 					durationMs,
-				} satisfies SleepNode,
+				},
 			];
-			return makeChainBuilder<any>(missionName, nextNodes);
+
+			return makeChainBuilder<AddEvent<E, typeof eventName, SleepEventRecord>>(
+				missionName,
+				nextNodes,
+			);
 		},
 
 		end() {
-			const finalNodes: MissionNode[] = [...nodes, { kind: "end" } satisfies EndNode];
+			const finalNodes: MissionNode[] = [
+				...nodes,
+				{ kind: "end" } satisfies EndNode,
+			];
+
 			return {
 				missionName,
 				nodes: finalNodes,
@@ -161,10 +178,16 @@ export const m = {
 				const startNode: StartNode = {
 					kind: "start",
 					inputSchema: args.input,
-					run: args.run,
+					// 🔑 same erasure here
+					run: args.run as StartNode["run"],
 				};
 
-				return makeChainBuilder<any>(missionName, [startNode]);
+				return makeChainBuilder<{
+					start: {
+						input: InferInput<typeof args.input>;
+						output: Awaited<ReturnType<typeof args.run>>;
+					};
+				}>(missionName, [startNode]);
 			},
 		};
 	},

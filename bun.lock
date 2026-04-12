@@ -1,0 +1,122 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "mission-control",
+      "devDependencies": {
+        "@biomejs/biome": "2.3.13",
+        "@types/node": "^24",
+        "typescript": "6.0.2",
+      },
+    },
+    "examples/ask-user-for-review": {
+      "name": "ask-user-for-review",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+        "@mission-control/in-memory-commander": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "examples/durable-reminder": {
+      "name": "durable-reminder",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+        "@mission-control/postgres-commander": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "examples/order-fulfillment": {
+      "name": "order-fulfillment",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+        "@mission-control/in-memory-commander": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/core": {
+      "name": "@mission-control/core",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/in-memory-commander": {
+      "name": "@mission-control/in-memory-commander",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/postgres-commander": {
+      "name": "@mission-control/postgres-commander",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+    "packages/sqlite-commander": {
+      "name": "@mission-control/sqlite-commander",
+      "version": "1.0.0-rc.1",
+      "dependencies": {
+        "@mission-control/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "typescript": "^5",
+      },
+    },
+  },
+  "packages": {
+    "@biomejs/biome": ["@biomejs/biome@2.3.13", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.3.13", "@biomejs/cli-darwin-x64": "2.3.13", "@biomejs/cli-linux-arm64": "2.3.13", "@biomejs/cli-linux-arm64-musl": "2.3.13", "@biomejs/cli-linux-x64": "2.3.13", "@biomejs/cli-linux-x64-musl": "2.3.13", "@biomejs/cli-win32-arm64": "2.3.13", "@biomejs/cli-win32-x64": "2.3.13" }, "bin": { "biome": "bin/biome" } }, "sha512-Fw7UsV0UAtWIBIm0M7g5CRerpu1eKyKAXIazzxhbXYUyMkwNrkX/KLkGI7b+uVDQ5cLUMfOC9vR60q9IDYDstA=="],
+
+    "@biomejs/cli-darwin-arm64": ["@biomejs/cli-darwin-arm64@2.3.13", "", { "os": "darwin", "cpu": "arm64" }, "sha512-0OCwP0/BoKzyJHnFdaTk/i7hIP9JHH9oJJq6hrSCPmJPo8JWcJhprK4gQlhFzrwdTBAW4Bjt/RmCf3ZZe59gwQ=="],
+
+    "@biomejs/cli-darwin-x64": ["@biomejs/cli-darwin-x64@2.3.13", "", { "os": "darwin", "cpu": "x64" }, "sha512-AGr8OoemT/ejynbIu56qeil2+F2WLkIjn2d8jGK1JkchxnMUhYOfnqc9sVzcRxpG9Ycvw4weQ5sprRvtb7Yhcw=="],
+
+    "@biomejs/cli-linux-arm64": ["@biomejs/cli-linux-arm64@2.3.13", "", { "os": "linux", "cpu": "arm64" }, "sha512-xvOiFkrDNu607MPMBUQ6huHmBG1PZLOrqhtK6pXJW3GjfVqJg0Z/qpTdhXfcqWdSZHcT+Nct2fOgewZvytESkw=="],
+
+    "@biomejs/cli-linux-arm64-musl": ["@biomejs/cli-linux-arm64-musl@2.3.13", "", { "os": "linux", "cpu": "arm64" }, "sha512-TUdDCSY+Eo/EHjhJz7P2GnWwfqet+lFxBZzGHldrvULr59AgahamLs/N85SC4+bdF86EhqDuuw9rYLvLFWWlXA=="],
+
+    "@biomejs/cli-linux-x64": ["@biomejs/cli-linux-x64@2.3.13", "", { "os": "linux", "cpu": "x64" }, "sha512-s+YsZlgiXNq8XkgHs6xdvKDFOj/bwTEevqEY6rC2I3cBHbxXYU1LOZstH3Ffw9hE5tE1sqT7U23C00MzkXztMw=="],
+
+    "@biomejs/cli-linux-x64-musl": ["@biomejs/cli-linux-x64-musl@2.3.13", "", { "os": "linux", "cpu": "x64" }, "sha512-0bdwFVSbbM//Sds6OjtnmQGp4eUjOTt6kHvR/1P0ieR9GcTUAlPNvPC3DiavTqq302W34Ae2T6u5VVNGuQtGlQ=="],
+
+    "@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.3.13", "", { "os": "win32", "cpu": "arm64" }, "sha512-QweDxY89fq0VvrxME+wS/BXKmqMrOTZlN9SqQ79kQSIc3FrEwvW/PvUegQF6XIVaekncDykB5dzPqjbwSKs9DA=="],
+
+    "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.3.13", "", { "os": "win32", "cpu": "x64" }, "sha512-trDw2ogdM2lyav9WFQsdsfdVy1dvZALymRpgmWsvSez0BJzBjulhOT/t+wyKeh3pZWvwP3VMs1SoOKwO3wecMQ=="],
+
+    "@mission-control/core": ["@mission-control/core@workspace:packages/core"],
+
+    "@mission-control/in-memory-commander": ["@mission-control/in-memory-commander@workspace:packages/in-memory-commander"],
+
+    "@mission-control/postgres-commander": ["@mission-control/postgres-commander@workspace:packages/postgres-commander"],
+
+    "@mission-control/sqlite-commander": ["@mission-control/sqlite-commander@workspace:packages/sqlite-commander"],
+
+    "@types/node": ["@types/node@24.12.2", "", { "dependencies": { "undici-types": "~7.16.0" } }, "sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g=="],
+
+    "ask-user-for-review": ["ask-user-for-review@workspace:examples/ask-user-for-review"],
+
+    "durable-reminder": ["durable-reminder@workspace:examples/durable-reminder"],
+
+    "order-fulfillment": ["order-fulfillment@workspace:examples/order-fulfillment"],
+
+    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
+
+    "undici-types": ["undici-types@7.16.0", "", {}, "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw=="],
+
+    "zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
+  }
+}

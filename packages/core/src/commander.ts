@@ -1,4 +1,3 @@
-import type { MissionDefinition } from "./types.js";
 import type {
 	CommanderCreateOptions,
 	MissionHandle,
@@ -6,11 +5,12 @@ import type {
 	MissionSnapshot,
 } from "./contracts.js";
 import type { EngineClock } from "./engine.js";
+import type { MissionDefinition } from "./types.js";
 
 export interface CommanderOptions {
 	clock?: EngineClock;
 	createMissionId?: () => string;
-	definitions?: MissionDefinition<any>[];
+	definitions?: MissionDefinition[];
 }
 
 export function createDefaultMissionId(): string {
@@ -22,19 +22,22 @@ export function createDefaultMissionId(): string {
 }
 
 export abstract class Commander {
-	protected readonly definitions = new Map<string, MissionDefinition<any>>();
+	protected readonly definitions = new Map<string, MissionDefinition>();
 	protected readonly clock: EngineClock;
 	protected readonly missionIdFactory: () => string;
 
 	public constructor(options: CommanderOptions = {}) {
-		this.clock = options.clock ?? { now: () => new Date(), sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)) };
+		this.clock = options.clock ?? {
+			now: () => new Date(),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+		};
 		this.missionIdFactory = options.createMissionId ?? createDefaultMissionId;
 		for (const definition of options.definitions ?? []) {
 			this.registerMission(definition);
 		}
 	}
 
-	public registerMission<M extends MissionDefinition<any>>(definition: M): this {
+	public registerMission<M extends MissionDefinition>(definition: M): this {
 		this.definitions.set(definition.missionName, definition);
 		return this;
 	}
@@ -43,11 +46,11 @@ export abstract class Commander {
 		return this.missionIdFactory();
 	}
 
-	protected getRegisteredMission(name: string): MissionDefinition<any> | undefined {
+	protected getRegisteredMission(name: string): MissionDefinition | undefined {
 		return this.definitions.get(name);
 	}
 
-	protected getRequiredMission(name: string): MissionDefinition<any> {
+	protected getRequiredMission(name: string): MissionDefinition {
 		const definition = this.getRegisteredMission(name);
 		if (!definition) {
 			throw new Error(
@@ -57,16 +60,18 @@ export abstract class Commander {
 		return definition;
 	}
 
-	public abstract createMission<M extends MissionDefinition<any>>(
+	public abstract createMission<M extends MissionDefinition>(
 		definition: M,
 		options?: CommanderCreateOptions,
 	): MissionHandle<M>;
 
-	public abstract getMission<M extends MissionDefinition<any>>(
+	public abstract getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<MissionHandle<M> | undefined>;
 
-	public abstract loadMission(missionId: string): Promise<MissionInspection | undefined>;
+	public abstract loadMission(
+		missionId: string,
+	): Promise<MissionInspection | undefined>;
 
 	public abstract listWaiting(): Promise<MissionSnapshot[]>;
 

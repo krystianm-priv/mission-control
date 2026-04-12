@@ -96,7 +96,7 @@ export interface CommanderCreateOptions {
 	missionId?: string;
 }
 
-export interface MissionHandle<M extends MissionDefinition<any>> {
+export interface MissionHandle<M extends MissionDefinition> {
 	readonly missionId: string;
 	readonly missionName: M["missionName"];
 	readonly status: MissionStatus;

@@ -1,11 +1,11 @@
-import { z } from "zod";
+import { m } from "@mission-control/core";
+import { z } from "zod/v4";
 import {
 	createReviewRequestRecord,
 	fakeMailer,
 	fakeSpamChecker,
 	updateReviewRequestRecordWithReview,
 } from "./utils.ts";
-import { m } from "@mission-control/core";
 
 export const askForReviewMission = m
 	.define("ask-for-review")

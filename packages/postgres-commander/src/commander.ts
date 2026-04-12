@@ -1,23 +1,22 @@
 import {
 	Commander,
-	createEngineRuntime,
-	hydrateEngineRuntime,
-	inspectRuntime,
-	recoverRuntime,
-	signalRuntime,
-	startRuntime,
-	waitForCompletion,
 	type CommanderCreateOptions,
 	type CommanderOptions,
+	createEngineRuntime,
 	type EngineRuntime,
+	hydrateEngineRuntime,
+	inspectRuntime,
 	type MissionDefinition,
 	type MissionHandle,
 	type MissionInspection,
 	type MissionSnapshot,
+	recoverRuntime,
+	signalRuntime,
+	startRuntime,
+	waitForCompletion,
 } from "@mission-control/core";
-
-import { PgStore } from "./store.js";
 import type { PgCommanderExecute } from "./sql-executor.js";
+import { PgStore } from "./store.js";
 
 export interface PgCommanderOptions extends CommanderOptions {
 	execute: PgCommanderExecute;
@@ -43,7 +42,7 @@ export class PgCommander extends Commander {
 		}
 	}
 
-	public override createMission<M extends MissionDefinition<any>>(
+	public override createMission<M extends MissionDefinition>(
 		definition: M,
 		options: CommanderCreateOptions = {},
 	): MissionHandle<M> {
@@ -54,7 +53,7 @@ export class PgCommander extends Commander {
 		return this.createHandle(runtime);
 	}
 
-	public override async getMission<M extends MissionDefinition<any>>(
+	public override async getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<MissionHandle<M> | undefined> {
 		await this.ensureReady();
@@ -69,7 +68,9 @@ export class PgCommander extends Commander {
 			return undefined;
 		}
 
-		const definition = this.getRegisteredMission(inspection.snapshot.missionName);
+		const definition = this.getRegisteredMission(
+			inspection.snapshot.missionName,
+		);
 		if (!definition) {
 			return undefined;
 		}
@@ -111,7 +112,9 @@ export class PgCommander extends Commander {
 
 	private async recoverPersistedRuntimes(): Promise<void> {
 		for (const inspection of await this.store.listRecoverableInspections()) {
-			const definition = this.getRegisteredMission(inspection.snapshot.missionName);
+			const definition = this.getRegisteredMission(
+				inspection.snapshot.missionName,
+			);
 			if (!definition) {
 				continue;
 			}
@@ -122,11 +125,10 @@ export class PgCommander extends Commander {
 	}
 
 	private createPersistedRuntime(
-		definition: MissionDefinition<any>,
+		definition: MissionDefinition,
 		missionId: string,
 	): EngineRuntime {
-		let runtime!: EngineRuntime;
-		runtime = createEngineRuntime(definition, missionId, {
+		return createEngineRuntime(definition, missionId, {
 			clock: this.clock,
 			persist: async (activeRuntime) => {
 				if (!this.closed) {
@@ -134,15 +136,13 @@ export class PgCommander extends Commander {
 				}
 			},
 		});
-		return runtime;
 	}
 
 	private hydratePersistedRuntime(
-		definition: MissionDefinition<any>,
+		definition: MissionDefinition,
 		inspection: MissionInspection,
 	): EngineRuntime {
-		let runtime!: EngineRuntime;
-		runtime = hydrateEngineRuntime(definition, inspection, {
+		return hydrateEngineRuntime(definition, inspection, {
 			clock: this.clock,
 			persist: async (activeRuntime) => {
 				if (!this.closed) {
@@ -150,10 +150,9 @@ export class PgCommander extends Commander {
 				}
 			},
 		});
-		return runtime;
 	}
 
-	private createHandle<M extends MissionDefinition<any>>(
+	private createHandle<M extends MissionDefinition>(
 		runtime: EngineRuntime,
 	): MissionHandle<M> {
 		const definition = runtime.definition as M;

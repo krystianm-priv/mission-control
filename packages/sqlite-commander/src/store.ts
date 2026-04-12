@@ -3,8 +3,8 @@ import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
 import { migration0001Init } from "./migrations/0001_init.js";
 import {
 	deserializeInspection,
-	serializeInspection,
 	type SerializedInspectionRow,
+	serializeInspection,
 } from "./serialization.js";
 import {
 	getSQLiteDatabaseConstructor,
@@ -18,7 +18,7 @@ export interface SQLiteStoreOptions {
 export class SQLiteStore {
 	private readonly db: SQLiteDatabase;
 
-	private constructor(options: SQLiteStoreOptions, db: SQLiteDatabase) {
+	private constructor(_options: SQLiteStoreOptions, db: SQLiteDatabase) {
 		this.db = db;
 		this.bootstrap();
 	}
@@ -96,22 +96,32 @@ export class SQLiteStore {
 	}
 
 	public listWaitingSnapshots(): MissionSnapshot[] {
-		return (this.db
-			.prepare("SELECT * FROM mc_missions WHERE status = 'waiting' ORDER BY updated_at ASC")
-			.all() as unknown as SerializedInspectionRow[]).map((row) => deserializeInspection(row).snapshot);
+		return (
+			this.db
+				.prepare(
+					"SELECT * FROM mc_missions WHERE status = 'waiting' ORDER BY updated_at ASC",
+				)
+				.all() as unknown as SerializedInspectionRow[]
+		).map((row) => deserializeInspection(row).snapshot);
 	}
 
 	public listScheduledSnapshots(): MissionSnapshot[] {
-		return (this.db
-			.prepare(
-				"SELECT * FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') ORDER BY timer_due_at ASC",
-			)
-			.all() as unknown as SerializedInspectionRow[]).map((row) => deserializeInspection(row).snapshot);
+		return (
+			this.db
+				.prepare(
+					"SELECT * FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') ORDER BY timer_due_at ASC",
+				)
+				.all() as unknown as SerializedInspectionRow[]
+		).map((row) => deserializeInspection(row).snapshot);
 	}
 
 	public listRecoverableInspections(): MissionInspection[] {
-		return (this.db
-			.prepare("SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC")
-			.all() as unknown as SerializedInspectionRow[]).map((row) => deserializeInspection(row));
+		return (
+			this.db
+				.prepare(
+					"SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
+				)
+				.all() as unknown as SerializedInspectionRow[]
+		).map((row) => deserializeInspection(row));
 	}
 }

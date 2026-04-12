@@ -13,7 +13,10 @@ test("serializeInspection round-trips mission inspection state", () => {
 			status: "waiting",
 			cursor: 2,
 			error: undefined,
-			ctx: { missionId: "mission-1", events: { start: { input: { ok: true } } } },
+			ctx: {
+				missionId: "mission-1",
+				events: { start: { input: { ok: true } } },
+			},
 			waiting: {
 				kind: "signal",
 				eventName: "approval",

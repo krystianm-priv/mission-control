@@ -16,7 +16,8 @@ const mission = commander.createMission(durableReminderMission);
 
 await mission.start({
 	recipient: "hello@example.com",
-	message: "This reminder survives a process restart through durable Postgres state.",
+	message:
+		"This reminder survives a process restart through durable Postgres state.",
 });
 
 await mission.waitForCompletion();
