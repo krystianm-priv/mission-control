@@ -1,6 +1,6 @@
-import type { RetryPolicy } from "./retry-policy.js";
-import type { AnyInputSchema, InferInput } from "./schema.js";
-import type { NeedToOptions, SleepResult } from "./timer.js";
+import type { RetryPolicy } from "./retry-policy.ts";
+import type { AnyInputSchema, InferInput } from "./schema.ts";
+import type { NeedToOptions, SleepResult } from "./timer.ts";
 
 export interface EventRecord {
 	input?: unknown;

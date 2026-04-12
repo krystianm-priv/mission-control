@@ -1,2 +1,2 @@
-export * from "./in-memory/commander.js";
-export * from "./testing/fixtures.js";
+export * from "./in-memory/commander.ts";
+export * from "./testing/fixtures.ts";

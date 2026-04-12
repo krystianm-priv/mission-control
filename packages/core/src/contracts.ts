@@ -1,4 +1,4 @@
-import type { MissionDefinition } from "./types.js";
+import type { MissionDefinition } from "./types.ts";
 
 export type MissionStatus =
 	| "idle"

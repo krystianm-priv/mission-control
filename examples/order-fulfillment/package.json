@@ -10,8 +10,8 @@
 		"dev": "node --watch src/index.ts"
 	},
 	"dependencies": {
-		"@mission-control/in-memory-commander": "workspace:*",
-		"@mission-control/core": "workspace:*",
+		"@mission-control/in-memory-commander": "*",
+		"@mission-control/core": "*",
 		"zod": "^4.3.6"
 	}
 }

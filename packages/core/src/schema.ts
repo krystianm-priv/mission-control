@@ -1,6 +1,6 @@
 import type { z } from "zod/v4";
 
-import { MissionValidationError } from "./errors.js";
+import { MissionValidationError } from "./errors.ts";
 
 export interface Schema<T = unknown> {
 	readonly _type?: T;

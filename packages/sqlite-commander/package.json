@@ -4,30 +4,12 @@
 	"description": "SQLite-backed durable commander for Mission Control.",
 	"type": "module",
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist",
-		"!dist/**/*.test.*",
-		"README.md",
-		"src/migrations"
-	],
-	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
-		"check-types": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"test": "sh -c 'node --experimental-sqlite --test $(find dist -name \"*.test.js\" -print)'"
+	"main": "./src/index.ts",
+	"dependencies": {
+		"@mission-control/core": "*"
 	},
 	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"@mission-control/core": "workspace:*"
+		"typescript": "6.0.2",
+		"zod": "^4"
 	}
 }

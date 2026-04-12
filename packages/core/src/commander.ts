@@ -3,9 +3,9 @@ import type {
 	MissionHandle,
 	MissionInspection,
 	MissionSnapshot,
-} from "./contracts.js";
-import type { EngineClock } from "./engine.js";
-import type { MissionDefinition } from "./types.js";
+} from "./contracts.ts";
+import type { EngineClock } from "./engine.ts";
+import type { MissionDefinition } from "./types.ts";
 
 export interface CommanderOptions {
 	clock?: EngineClock;

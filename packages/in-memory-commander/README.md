@@ -13,7 +13,7 @@ There is no singleton commander instance in the public API. Create runtimes expl
 
 ```ts
 import { InMemoryCommander } from "@mission-control/in-memory-commander";
-import { approvalMission } from "./approval-mission.js";
+import { approvalMission } from "./approval-mission.ts";
 
 const commander = new InMemoryCommander({
 	definitions: [approvalMission],

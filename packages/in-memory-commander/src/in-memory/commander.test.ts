@@ -6,8 +6,8 @@ import {
 	m,
 } from "@mission-control/core";
 import { z } from "zod/v4";
-import { FakeClock } from "../testing/fixtures.js";
-import { InMemoryCommander } from "./commander.js";
+import { FakeClock } from "../testing/fixtures.ts";
+import { InMemoryCommander } from "./commander.ts";
 
 test("in-memory commander runs successful start, wait, signal, and completion flow", async () => {
 	const mission = m

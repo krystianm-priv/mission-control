@@ -6,7 +6,7 @@ import test from "node:test";
 
 import type { MissionInspection } from "@mission-control/core";
 
-import { SQLiteStore } from "./store.js";
+import { SQLiteStore } from "./store.ts";
 
 function createTempDbPath(): { dir: string; path: string } {
 	const dir = mkdtempSync(join(tmpdir(), "mission-control-sqlite-store-"));

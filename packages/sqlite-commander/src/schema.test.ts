@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SQLITE_SCHEMA_STATEMENTS } from "./schema.js";
+import { SQLITE_SCHEMA_STATEMENTS } from "./schema.ts";
 
 test("sqlite schema includes mission table and indexes", () => {
 	const ddl = SQLITE_SCHEMA_STATEMENTS.join("\n");

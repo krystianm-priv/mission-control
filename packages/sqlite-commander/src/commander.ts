@@ -16,7 +16,7 @@ import {
 	waitForCompletion,
 } from "@mission-control/core";
 
-import { SQLiteStore } from "./store.js";
+import { SQLiteStore } from "./store.ts";
 
 export interface SQLiteCommanderOptions extends CommanderOptions {
 	databasePath: string;

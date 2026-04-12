@@ -5,21 +5,21 @@ import type {
 	SignalRecord,
 	StepAttemptRecord,
 	TimerRecord,
-} from "./contracts.js";
+} from "./contracts.ts";
 import {
 	MissionAlreadyStartedError,
 	MissionExecutionError,
 	MissionSignalError,
-} from "./errors.js";
-import { getRetryDelayMs } from "./retry-policy.js";
-import { parseMissionInput } from "./schema.js";
+} from "./errors.ts";
+import { getRetryDelayMs } from "./retry-policy.ts";
+import { parseMissionInput } from "./schema.ts";
 import type {
 	MissionDefinition,
 	MissionNode,
 	NeedToNode,
 	SleepNode,
 	StepNode,
-} from "./types.js";
+} from "./types.ts";
 
 export interface EngineClock {
 	now(): Date;

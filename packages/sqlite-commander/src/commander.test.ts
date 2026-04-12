@@ -6,7 +6,7 @@ import test from "node:test";
 import { type EngineClock, m } from "@mission-control/core";
 import { z } from "zod/v4";
 
-import { SQLiteCommander } from "./commander.js";
+import { SQLiteCommander } from "./commander.ts";
 
 class FakeClock implements EngineClock {
 	private nowMs = 0;

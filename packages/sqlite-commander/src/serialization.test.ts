@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { MissionInspection } from "@mission-control/core";
 
-import { deserializeInspection, serializeInspection } from "./serialization.js";
+import { deserializeInspection, serializeInspection } from "./serialization.ts";
 
 test("serializeInspection round-trips mission inspection state", () => {
 	const inspection: MissionInspection = {

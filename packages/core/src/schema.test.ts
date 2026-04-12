@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { z } from "zod/v4";
 
-import { MissionValidationError } from "./errors.js";
-import { parseMissionInput } from "./schema.js";
+import { MissionValidationError } from "./errors.ts";
+import { parseMissionInput } from "./schema.ts";
 
 test("parseMissionInput returns parsed data for valid input", () => {
 	const value = parseMissionInput(

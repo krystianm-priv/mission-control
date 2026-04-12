@@ -15,8 +15,8 @@ import {
 	startRuntime,
 	waitForCompletion,
 } from "@mission-control/core";
-import type { PgCommanderExecute } from "./sql-executor.js";
-import { PgStore } from "./store.js";
+import type { PgCommanderExecute } from "./sql-executor.ts";
+import { PgStore } from "./store.ts";
 
 export interface PgCommanderOptions extends CommanderOptions {
 	execute: PgCommanderExecute;

@@ -24,7 +24,7 @@ The executor may return:
 ```ts
 import { db } from "@/drizzle/index.ts";
 import { PgCommander } from "@mission-control/postgres-commander";
-import { reminderMission } from "./reminder-mission.js";
+import { reminderMission } from "./reminder-mission.ts";
 
 const commander = new PgCommander({
 	definitions: [reminderMission],
@@ -37,7 +37,7 @@ const commander = new PgCommander({
 ```ts
 import { PGlite } from "@electric-sql/pglite";
 import { PgCommander } from "@mission-control/postgres-commander";
-import { reminderMission } from "./reminder-mission.js";
+import { reminderMission } from "./reminder-mission.ts";
 
 const db = await PGlite.create("./missions-pgdata");
 

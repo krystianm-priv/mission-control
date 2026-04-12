@@ -4,29 +4,9 @@
 	"description": "Typed mission definition DSL and shared runtime validation for Mission Control.",
 	"type": "module",
 	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist",
-		"!dist/**/*.test.*",
-		"README.md"
-	],
-	"scripts": {
-		"build": "tsc -p tsconfig.build.json",
-		"check-types": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"test": "sh -c 'node --test $(find dist -name \"*.test.js\" -print)'"
-	},
+	"main": "./src/index.ts",
 	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"zod": "^4.3.6"
+		"typescript": "6.0.2",
+		"zod": "^4"
 	}
 }

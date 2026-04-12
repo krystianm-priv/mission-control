@@ -23,7 +23,7 @@ node --experimental-sqlite ...
 import { join } from "node:path";
 
 import { SQLiteCommander } from "@mission-control/sqlite-commander";
-import { reminderMission } from "./reminder-mission.js";
+import { reminderMission } from "./reminder-mission.ts";
 
 const commander = new SQLiteCommander({
 	databasePath: join(process.cwd(), "missions.sqlite"),

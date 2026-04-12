@@ -1,7 +1,7 @@
-import { MissionDefinitionError } from "./errors.js";
-import { normalizeRetryPolicy, type RetryOptions } from "./retry-policy.js";
-import type { AnyInputSchema, InferInput } from "./schema.js";
-import type { NeedToOptions } from "./timer.js";
+import { MissionDefinitionError } from "./errors.ts";
+import { normalizeRetryPolicy, type RetryOptions } from "./retry-policy.ts";
+import type { AnyInputSchema, InferInput } from "./schema.ts";
+import type { NeedToOptions } from "./timer.ts";
 import type {
 	AddEvent,
 	AssertNewEventName,
@@ -12,12 +12,10 @@ import type {
 	MissionNode,
 	MissionStaticDefinition,
 	NeedToInput,
-	NeedToNode,
 	SleepEventRecord,
-	SleepNode,
 	StartNode,
 	StepNode,
-} from "./types.js";
+} from "./types.ts";
 
 type ChainBuilder<E extends EventsMap> = {
 	step<EventName extends string, Output extends object>(
@@ -40,7 +38,7 @@ type ChainBuilder<E extends EventsMap> = {
 	end(): MissionDefinition<E>;
 };
 
-type DefineBuilder<Name extends string> = {
+type DefineBuilder<_Name extends string> = {
 	start<S extends AnyInputSchema, StartOutput extends object>(args: {
 		input: S;
 		run: (args: {

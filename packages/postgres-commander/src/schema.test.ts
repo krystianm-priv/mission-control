@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { POSTGRES_SCHEMA_STATEMENTS } from "./schema.js";
+import { POSTGRES_SCHEMA_STATEMENTS } from "./schema.ts";
 
 test("postgres schema includes mission table and indexes", () => {
 	const ddl = POSTGRES_SCHEMA_STATEMENTS.join("\n");

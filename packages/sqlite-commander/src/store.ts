@@ -1,15 +1,15 @@
 import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
 
-import { migration0001Init } from "./migrations/0001_init.js";
+import { migration0001Init } from "./migrations/0001_init.ts";
 import {
 	deserializeInspection,
 	type SerializedInspectionRow,
 	serializeInspection,
-} from "./serialization.js";
+} from "./serialization.ts";
 import {
 	getSQLiteDatabaseConstructor,
 	type SQLiteDatabase,
-} from "./sqlite-runtime.js";
+} from "./sqlite-runtime.ts";
 
 export interface SQLiteStoreOptions {
 	databasePath: string;

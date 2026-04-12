@@ -1,17 +1,17 @@
 import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
 
-import { migration0001Init } from "./migrations/0001_init.js";
+import { migration0001Init } from "./migrations/0001_init.ts";
 import {
 	deserializeInspection,
 	type SerializedInspectionRow,
 	serializeInspection,
-} from "./serialization.js";
+} from "./serialization.ts";
 import {
 	executeRows,
 	executeStatement,
 	type PgCommanderExecute,
 	sqlLiteral,
-} from "./sql-executor.js";
+} from "./sql-executor.ts";
 
 export interface PgStoreOptions {
 	execute: PgCommanderExecute;

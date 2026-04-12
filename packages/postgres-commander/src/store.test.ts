@@ -6,7 +6,7 @@ import test from "node:test";
 
 import type { MissionInspection } from "@mission-control/core";
 
-import { PgStore } from "./store.js";
+import { PgStore } from "./store.ts";
 
 async function createPGlite(): Promise<
 	| {

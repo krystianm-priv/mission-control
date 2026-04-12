@@ -10,8 +10,8 @@
 		"dev": "node --watch src/index.ts"
 	},
 	"dependencies": {
-		"@mission-control/core": "workspace:*",
-		"@mission-control/postgres-commander": "workspace:*",
+		"@mission-control/core": "*",
+		"@mission-control/postgres-commander": "*",
 		"zod": "^4.3.6"
 	}
 }
