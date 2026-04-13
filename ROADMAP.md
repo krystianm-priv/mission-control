@@ -352,3 +352,160 @@ Acceptance criteria:
 - mission definitions can register query, update, and schedule metadata
 - runtime and client packages exist and work against the current commander engine
 - tests cover the new foundation behavior without overclaiming full platform parity
+
+## Pilot-ready production track
+
+This track exists because the repository now has a strong preserved-DSL foundation, but it is still not ready to be described as production-grade for general workloads.
+
+Strategic summary:
+
+- Mission Control is **not** yet ready for broad production scenarios.
+- It is best described as a strong pre-v1 foundation with:
+  - a preserved authored mission DSL
+  - a publishable Postgres adapter
+  - restart-safe recovery for signal / timer / retry waits
+  - green release validation
+  - thin `runtime` / `client` package boundaries
+- The target of this track is **pilot-ready production use**, not full general-availability parity with Temporal or DBOS.
+- Pilot-ready means:
+  - safe enough for controlled internal or limited-scope production pilots
+  - Postgres remains the only production backend
+  - multi-instance claim safety must be proven
+  - rollback, operator expectations, and idempotency responsibilities must be documented explicitly
+
+Current reality at the start of this track:
+
+- `@mission-control/adapter-postgres` is the reference durable backend
+- restart-safe signal / timer / retry recovery is proven for the current snapshot-based runtime
+- `runtime` and `client` packages now exist, but they are still thin wrappers around the current commander engine
+- the Postgres adapter still stores one durable `mc_missions` snapshot row per mission as the execution source of truth
+- there is still no multi-instance claim / lease model
+- side effects are still at-least-once, not exactly-once
+- application-level idempotency is still required for external effects
+
+Production-grade blockers that still exist:
+
+- Postgres durability is still centered on a single `mc_missions` snapshot row, not durable execution history plus runnable tasks
+- there is no claim / lease ownership model for multi-instance embedded runtimes
+- there is no exactly-once side-effect boundary, and the runtime still allows replay after crashes between side effects and persistence
+- cancellation semantics are not complete enough for production pilot use
+- `runtime` is not yet a managed polling runtime; it is still essentially `waitUntilReady()` plus `close()`
+- `client` is a thin commander wrapper, not yet a robust production interaction surface
+- `cli` does not yet provide operator commands such as inspect / list / cancel
+- logs, metrics, and runtime lifecycle hooks are not yet sufficient for production pilots
+
+Required architectural direction for this track:
+
+- preserve the authored mission DSL exactly
+- keep public terminology as `mission` / `commander`
+- move Postgres from “snapshot row as source of truth” toward:
+  - durable task records
+  - durable history records
+  - claim / lease ownership
+  - safe task resumption after restart
+- keep the topology embedded-only, but make it safe for multiple runtime instances against one Postgres database
+- continue to treat user-defined side effects as at-least-once unless the application supplies idempotency
+
+What this track does **not** require yet:
+
+- exactly-once side-effect guarantees
+- workflow / mission versioning for already-running executions
+- broad multi-region or multi-cluster orchestration
+- a web dashboard
+- full general-availability claims for arbitrary customer-critical workloads
+
+Operator-facing target at the end of this track:
+
+- Mission Control can be run as a Postgres-backed embedded runtime in a limited production pilot
+- multiple runtime instances can safely share the same Postgres database without double-running claimed tasks
+- crash / restart behavior for claimed work is tested and documented
+- operators have enough tooling to inspect waiting missions, inspect a mission by ID, and cancel a mission
+- docs explain exactly what Mission Control guarantees and what app code must still handle itself
+
+### MC-014 — Reach pilot-ready production correctness for the Postgres runtime
+**Status:** [ ]
+
+Depends on:
+
+- MC-013
+
+Scope:
+
+- replace snapshot-only Postgres persistence as the execution source of truth with durable task and history records
+- add embedded runtime polling, claiming, lease expiry, and safe task resumption
+- add cancellation support for waiting missions
+- define and document the pilot-ready at-least-once side-effect contract
+
+Implementation notes:
+
+- `@mission-control/runtime` must become a real embedded runtime loop, not just a thin commander lifecycle wrapper
+- `@mission-control/adapter-postgres` must grow the storage and claiming primitives needed by that loop
+- `@mission-control/core` must remain runtime-neutral and keep the current authored DSL intact
+- accepted signals, updates, timer wakeups, retries, and cancellations must persist enough state to survive restart and reclaim
+- side-effect handlers in `start.run` and `step(...)` should still be treated as replayable unless app code adds idempotency keys
+
+Acceptance criteria:
+
+- two runtime instances against one Postgres database do not double-run the same claimed task while a lease is valid
+- lease expiry allows safe task reclaim after a simulated runtime crash
+- restart after claim-before-completion resumes correctly
+- signal, timer, retry, update, and cancellation state survive restart
+- docs clearly state that external side effects remain at-least-once and require application-level idempotency
+- multi-runtime Postgres integration tests gate pilot-ready correctness claims
+
+### MC-015 — Add pilot-ready runtime operability
+**Status:** [ ]
+
+Depends on:
+
+- MC-014
+
+Scope:
+
+- turn `@mission-control/runtime` into a managed embedded runtime with polling and shutdown controls
+- add minimum operator tooling in `@mission-control/cli`
+- add structured logging and metric hooks for mission execution and recovery
+
+Implementation notes:
+
+- runtime configuration must at least cover identity, polling interval, batch size, and lease timeout
+- graceful shutdown must be explicit about what happens to in-flight claimed work
+- operator tooling should start with CLI rather than a web UI
+- logging and metrics hooks should be application-owned integration points rather than a bundled observability stack
+
+Acceptance criteria:
+
+- runtime exposes configurable identity, polling interval, batch size, and lease timeout
+- graceful shutdown behavior is deterministic and tested
+- CLI can list waiting missions, inspect a mission, and cancel a mission
+- runtime emits structured logs and metric hooks for claims, retries, wakeups, failures, and lease expiry
+- production docs explain restart, rollback, and operator expectations for pilot use
+
+### MC-016 — Reassess production readiness and publish a pilot guide
+**Status:** [ ]
+
+Depends on:
+
+- MC-015
+
+Scope:
+
+- run the full pilot-ready validation set
+- document safe production-pilot scenarios and non-goals
+- define the remaining gap from pilot-ready to general production use
+
+Implementation notes:
+
+- the final assessment for this track must be honest: it should state whether Mission Control is pilot-ready, not assume that it is
+- docs must clearly separate:
+  - what is now safe enough for pilot use
+  - what remains post-pilot work
+  - which responsibilities still belong to the application developer
+- the remaining gap to general production should be captured as the next roadmap track rather than left implicit
+
+Acceptance criteria:
+
+- `release:check` passes with the new runtime architecture
+- multi-runtime crash / recovery integration tests pass
+- root docs include a production-pilot guide and explicit non-goals
+- the repo states whether Mission Control is pilot-ready, and on what terms
