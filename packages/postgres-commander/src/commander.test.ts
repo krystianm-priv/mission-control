@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { type EngineClock, m } from "@mission-control/core";
+import { createCommander, type EngineClock, m } from "@mission-control/core";
 
-import { PgCommander } from "./commander.ts";
+import { createPgPersistenceAdapter, PgCommander } from "./commander.ts";
 
 class FakeClock implements EngineClock {
 	private nowMs = 0;
@@ -105,18 +105,23 @@ test("PgCommander survives reload for waiting signal missions", async () => {
 			}))
 			.end();
 
-		const commander1 = new PgCommander({
-			execute: await harness.createExecute(),
+		const commander1 = createCommander({
 			definitions: [mission],
 			createMissionId: () => "mission-signal",
+			persistence: createPgPersistenceAdapter({
+				execute: await harness.createExecute(),
+			}),
 		});
-		const created = commander1.createMission(mission);
-		await created.start({ email: "hello@example.com" });
+		await commander1.start(mission, {
+			email: "hello@example.com",
+		});
 		commander1.close();
 
-		const commander2 = new PgCommander({
-			execute: await harness.createExecute(),
+		const commander2 = createCommander({
 			definitions: [mission],
+			persistence: createPgPersistenceAdapter({
+				execute: await harness.createExecute(),
+			}),
 		});
 		const loaded =
 			await commander2.getMission<typeof mission>("mission-signal");

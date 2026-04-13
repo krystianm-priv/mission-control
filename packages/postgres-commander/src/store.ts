@@ -1,4 +1,8 @@
-import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
+import type {
+	CommanderPersistenceAdapter,
+	MissionInspection,
+	MissionSnapshot,
+} from "@mission-control/core";
 
 import { migration0001Init } from "./migrations/0001_init.ts";
 import {
@@ -17,7 +21,7 @@ export interface PgStoreOptions {
 	execute: PgCommanderExecute;
 }
 
-export class PgStore {
+export class PgStore implements CommanderPersistenceAdapter {
 	private readonly execute: PgCommanderExecute;
 
 	public constructor(options: PgStoreOptions) {

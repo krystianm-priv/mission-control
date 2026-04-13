@@ -24,8 +24,9 @@ The v1 release candidate ships three publishable packages:
 - retry policies with backoff metadata
 - inspection APIs for mission snapshot, history, attempts, signals, and timers
 - an explicit abstract `Commander` base class in core
+- a shared `createCommander(...)` API with pluggable persistence adapters
 - an in-memory runtime for tests and fast local execution
-- a durable Postgres runtime that persists state and resumes after reload
+- a durable Postgres adapter that persists state and resumes after reload
 
 ## What v1 does not include
 
@@ -44,20 +45,21 @@ Owns:
 - shared types and validation helpers
 - retry and timer metadata
 - the abstract `Commander` base class
+- the shared configurable commander runtime and persistence adapter contract
 - runtime-neutral contracts and shared execution engine
 
 ### `@mission-control/in-memory-commander`
 
 Owns:
 
-- the `InMemoryCommander` implementation
+- the `InMemoryCommander` compatibility wrapper
 - deterministic testing helpers
 
 ### `@mission-control/postgres-commander`
 
 Owns:
 
-- the `PgCommander` implementation
+- the Postgres persistence adapter and `PgCommander` compatibility wrapper
 - schema bootstrap and migrations
 - durable persistence for waits, retries, timers, and inspection state
 - restart-safe reload and resume
@@ -71,9 +73,11 @@ Owns:
 You provide a single `execute(query: string)` function that runs raw SQL against Postgres.
 
 ```ts
-const commander = new PgCommander({
+const commander = createCommander({
 	definitions: [durableReminderMission],
-	execute: (query) => db.execute(query),
+	persistence: createPgPersistenceAdapter({
+		execute: (query) => db.execute(query),
+	}),
 });
 ```
 
@@ -82,8 +86,7 @@ The durable test suite may use `@electric-sql/pglite` when it is installed local
 ## Quick start
 
 ```ts
-import { m } from "@mission-control/core";
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
+import { createCommander, m } from "@mission-control/core";
 
 const approvalMission = m
 	.define("approval")
@@ -113,12 +116,13 @@ const approvalMission = m
 	})
 	.end();
 
-const commander = new InMemoryCommander({
+const commander = createCommander({
 	definitions: [approvalMission],
 });
-const mission = commander.createMission(approvalMission);
 
-await mission.start({ email: "ops@example.com" });
+const mission = await commander.start(approvalMission, {
+	email: "ops@example.com",
+});
 await mission.signal("receive-approval", { approvedBy: "reviewer-1" });
 
 console.log(mission.inspect());
@@ -127,8 +131,8 @@ console.log(mission.inspect());
 ## Durable Postgres example
 
 ```ts
-import { m } from "@mission-control/core";
-import { PgCommander } from "@mission-control/postgres-commander";
+import { createCommander, m } from "@mission-control/core";
+import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
 
 const reminderMission = m
 	.define("reminder")
@@ -159,13 +163,14 @@ const reminderMission = m
 	}))
 	.end();
 
-const commander = new PgCommander({
+const commander = createCommander({
 	definitions: [reminderMission],
-	execute: (query) => db.execute(query),
+	persistence: createPgPersistenceAdapter({
+		execute: (query) => db.execute(query),
+	}),
 });
 
-const mission = commander.createMission(reminderMission);
-await mission.start({
+const mission = await commander.start(reminderMission, {
 	recipient: "hello@example.com",
 	message: "This mission survives process reloads through durable Postgres state.",
 });

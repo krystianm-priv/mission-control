@@ -9,13 +9,14 @@
 - retry helpers: `DEFAULT_RETRY_POLICY`, `normalizeRetryPolicy`, `getRetryDelayMs`
 - timer helpers: `NeedToOptions`, `WaitTimeoutDefinition`, `SleepResult`
 - commander contracts: `MissionSnapshot`, `MissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
+- configurable runtime APIs: `createCommander`, `ConfigurableCommander`, `CommanderPersistenceAdapter`
 - runtime engine helpers: `createEngineRuntime`, `hydrateEngineRuntime`, `recoverRuntime`, `startRuntime`, `signalRuntime`, `runUntilWaitOrEnd`
 - abstract base class: `Commander`
 
 ## Example
 
 ```ts
-import { Commander, m } from "@mission-control/core";
+import { createCommander, m } from "@mission-control/core";
 
 const reminderMission = m
 	.define("reminder")
@@ -34,8 +35,12 @@ const reminderMission = m
 	.sleep("wait-before-reminder", 30_000)
 	.end();
 
-abstract class AppCommander extends Commander {}
+const commander = createCommander({
+	definitions: [reminderMission],
+});
 
-void reminderMission;
-void AppCommander;
+const mission = await commander.start(reminderMission, {
+	userId: "user-123",
+});
+await mission.waitForCompletion();
 ```

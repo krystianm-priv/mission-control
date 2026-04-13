@@ -4,6 +4,7 @@
 
 It provides:
 
+- `createPgPersistenceAdapter`
 - `PgCommander`
 - Postgres schema bootstrap and migration `0001_init`
 - durable persistence for mission state, history, attempts, signals, and timers
@@ -11,7 +12,10 @@ It provides:
 
 ## Runtime contract
 
-`PgCommander` does not own a database client. You pass a single `execute(query: string)` function and keep control of the underlying Postgres connection.
+The preferred v1 API is `createCommander(...)` from `@mission-control/core` plus `createPgPersistenceAdapter(...)` from this package.
+`PgCommander` remains as a thin compatibility wrapper around that shared implementation.
+
+The Postgres adapter does not own a database client. You pass a single `execute(query: string)` function and keep control of the underlying Postgres connection.
 
 The executor may return:
 
@@ -23,28 +27,33 @@ The executor may return:
 
 ```ts
 import { db } from "@/drizzle/index.ts";
-import { PgCommander } from "@mission-control/postgres-commander";
+import { createCommander } from "@mission-control/core";
+import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
 import { reminderMission } from "./reminder-mission.ts";
 
-const commander = new PgCommander({
+const commander = createCommander({
 	definitions: [reminderMission],
-	execute: (query) => db.execute(query),
+	persistence: createPgPersistenceAdapter({
+		execute: (query) => db.execute(query),
+	}),
 });
 ```
 
 ## Minimal local example
 
 ```ts
-import { PgCommander } from "@mission-control/postgres-commander";
+import { createCommander } from "@mission-control/core";
+import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
 import { reminderMission } from "./reminder-mission.ts";
 
-const commander = new PgCommander({
+const commander = createCommander({
 	definitions: [reminderMission],
-	execute: (query) => db.execute(query),
+	persistence: createPgPersistenceAdapter({
+		execute: (query) => db.execute(query),
+	}),
 });
 
-const mission = commander.createMission(reminderMission);
-await mission.start({
+const mission = await commander.start(reminderMission, {
 	recipient: "hello@example.com",
 	message: "Persist me",
 });
