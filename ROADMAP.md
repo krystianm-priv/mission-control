@@ -79,7 +79,7 @@ v1 does **not** need to include:
 ## Milestone 1 — Repository truth reset
 
 ### MC-001 — Rewrite control docs around the real pre-v1 state
-**Status:** [ ]
+**Status:** [x]
 
 Scope:
 

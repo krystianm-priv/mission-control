@@ -99,6 +99,13 @@ The repository is moving toward a workspace layout shaped like:
 
 Durable backends should live in `adapters/*`, not in `packages/*`.
 
+Today, the durable runtime experiments still live under:
+
+- `packages/postgres-commander`
+- `packages/sqlite-commander`
+
+That package layout is transitional. The adapter-shaped move is tracked separately in `ROADMAP.md` as `MC-002`.
+
 ## What Mission Control does well already
 
 Today the repo already demonstrates:

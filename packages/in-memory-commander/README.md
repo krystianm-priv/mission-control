@@ -7,7 +7,7 @@
 - `InMemoryCommander`
 - `FakeClock`
 
-The preferred v1 API is `createCommander(...)` from `@mission-control/core`.
+The current recommended API is `createCommander(...)` from `@mission-control/core`.
 `InMemoryCommander` remains as a thin compatibility wrapper around that shared implementation.
 
 ## Example

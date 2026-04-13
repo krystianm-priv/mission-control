@@ -1,8 +1,9 @@
 # @mission-control/sqlite-commander
 
-`@mission-control/sqlite-commander` is a private, non-v1 SQLite runtime kept in this repository for experimentation and local comparison.
+`@mission-control/sqlite-commander` is the current SQLite-backed durable runtime package in this pre-v1 repository.
 
-The public v1 durable runtime is `@mission-control/postgres-commander`.
+It remains experimental, and the roadmap has not yet chosen a single reference v1 durable adapter.
+The long-term package direction is still adapter-shaped under `adapters/*`, so this package should be treated as transitional.
 
 It provides:
 

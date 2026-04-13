@@ -24,8 +24,8 @@
 ### `package.json`
 
 - root workspace config
-- should include the real workspace roots
-- should eventually include:
+- currently includes the real workspace roots that exist today
+- will eventually include:
   - `packages/*`
   - `adapters/*`
   - `examples/*`
@@ -80,7 +80,47 @@ Typical files of interest:
 - fake clock / testing fixtures
 - in-memory runtime tests
 
-## `adapters/*`
+## Current durable runtime packages
+
+These packages still live under `packages/*` today.
+That is transitional and expected to change when the repo reaches `MC-002`.
+
+### `packages/postgres-commander`
+
+Current role:
+
+- Postgres-backed durable runtime experiment
+- likely source material for a future `@mission-control/adapter-postgres` package
+
+Typical responsibilities today:
+
+- schema / migrations
+- SQL execution boundary
+- inspection serialization
+- durable load / save / recovery mechanics
+- adapter-specific tests
+
+### `packages/sqlite-commander`
+
+Current role:
+
+- SQLite-backed durable runtime experiment
+- likely source material for a future `@mission-control/adapter-sqlite` package
+
+Typical responsibilities today:
+
+- schema / migrations
+- SQLite storage format
+- inspection serialization
+- durable load / save / recovery mechanics
+- adapter-specific tests
+
+## Target durable adapter boundary
+
+The intended durable backend boundary for v1 lives under `adapters/*`.
+Agents should treat this as the destination architecture, not as the current on-disk layout.
+
+### `adapters/*`
 
 Purpose:
 
@@ -165,8 +205,9 @@ The durable backend is an implementation detail of the adapter boundary, not of 
 
 The following may change as part of reaching v1:
 
-- exact adapter package names if the folder structure is mid-migration
+- exact adapter package names while the folder structure is still mid-migration
 - which durable adapter becomes the first production-grade reference backend
+- whether the current `packages/postgres-commander` and `packages/sqlite-commander` directories are moved or mirrored into `adapters/*`
 - examples that still reference outdated packages
 - release scripts that still point at the old package graph
 - docs that still speak as if v1 is already complete

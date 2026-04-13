@@ -32,7 +32,7 @@ Expected semantics:
 - `close()` is optional synchronous cleanup for backend resources owned by the adapter
 
 The commander does not require a query builder, ORM, queue, or leasing protocol.
-For v1, adapters are expected to support single-process recovery semantics that match the existing in-memory and Postgres runtimes.
+For the current pre-v1 runtime, adapters are expected to support single-process recovery semantics that match the existing in-memory runtime and the durable runtime experiments in this repository.
 If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before calling `createMission(...)` directly.
 
 ## Example

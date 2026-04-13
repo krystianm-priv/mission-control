@@ -1,6 +1,9 @@
 # @mission-control/postgres-commander
 
-`@mission-control/postgres-commander` is the durable Mission Control runtime for v1.
+`@mission-control/postgres-commander` is the current Postgres-backed durable runtime package in this pre-v1 repository.
+
+It is part of the durable adapter work, but the roadmap has not yet declared a single reference v1 backend.
+The long-term package direction is still adapter-shaped under `adapters/*`, so this package should be treated as transitional.
 
 It provides:
 
@@ -12,7 +15,7 @@ It provides:
 
 ## Runtime contract
 
-The preferred v1 API is `createCommander(...)` from `@mission-control/core` plus `createPgPersistenceAdapter(...)` from this package.
+The current recommended API is `createCommander(...)` from `@mission-control/core` plus `createPgPersistenceAdapter(...)` from this package.
 `PgCommander` remains as a thin compatibility wrapper around that shared implementation.
 
 The Postgres adapter does not own a database client. You pass a single `execute(query: string)` function and keep control of the underlying Postgres connection.
