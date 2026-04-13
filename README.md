@@ -83,6 +83,22 @@ const commander = createCommander({
 
 The durable test suite may use `@electric-sql/pglite` when it is installed locally so the repo can verify Postgres semantics without external infrastructure, but it is not part of the required runtime story.
 
+## Persistence adapters
+
+`createCommander(...)` accepts an optional `persistence` adapter.
+If you provide one, the adapter persists whole `MissionInspection` objects and drives restart-safe recovery through `listRecoverableInspections()`.
+
+For v1, the minimum supported contract is:
+
+- `bootstrap()` for one-time startup work before recovery
+- `saveInspection(inspection)` to persist the latest runtime state
+- `loadInspection(missionId)` to load one mission by id
+- `listWaitingSnapshots()` and `listScheduledSnapshots()` for inspection APIs
+- `listRecoverableInspections()` for startup rehydration
+- optional `close()` cleanup
+
+The built-in Postgres package is one implementation of that contract, and the default behavior with no adapter remains in-memory.
+
 ## Quick start
 
 ```ts

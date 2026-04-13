@@ -16,6 +16,7 @@ The preferred v1 API is `createCommander(...)` from `@mission-control/core` plus
 `PgCommander` remains as a thin compatibility wrapper around that shared implementation.
 
 The Postgres adapter does not own a database client. You pass a single `execute(query: string)` function and keep control of the underlying Postgres connection.
+It is a concrete implementation of `CommanderPersistenceAdapter` from `@mission-control/core`.
 
 The executor may return:
 

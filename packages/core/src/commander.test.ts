@@ -49,6 +49,97 @@ class MemoryPersistenceAdapter implements CommanderPersistenceAdapter {
 	}
 }
 
+test("createCommander bootstraps persistence before recovery and closes the adapter", async () => {
+	const events: string[] = [];
+	const mission = m
+		.define("recover")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.needTo("resume", {
+			parse: (input) => input as { approved: boolean },
+		})
+		.end();
+
+	const persistedInspection: MissionInspection = {
+		snapshot: {
+			missionId: "mission-recoverable",
+			missionName: "recover",
+			status: "waiting",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "mission-recoverable",
+				events: {
+					start: {
+						input: { id: "123" },
+						output: { ok: true },
+					},
+				},
+			},
+			waiting: {
+				kind: "signal",
+				eventName: "resume",
+				nodeIndex: 1,
+			},
+		},
+		history: [
+			{ type: "mission-created", at: "1970-01-01T00:00:00.000Z" },
+			{ type: "mission-started", at: "1970-01-01T00:00:00.000Z" },
+			{
+				type: "waiting-for-signal",
+				at: "1970-01-01T00:00:00.000Z",
+				eventName: "resume",
+			},
+		],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	};
+
+	const persistence: CommanderPersistenceAdapter = {
+		bootstrap: () => {
+			events.push("bootstrap");
+		},
+		saveInspection: () => {
+			events.push("save");
+		},
+		loadInspection: () => {
+			events.push("load");
+			return undefined;
+		},
+		listWaitingSnapshots: () => {
+			events.push("listWaiting");
+			return [];
+		},
+		listScheduledSnapshots: () => {
+			events.push("listScheduled");
+			return [];
+		},
+		listRecoverableInspections: () => {
+			events.push("listRecoverable");
+			return [structuredClone(persistedInspection)];
+		},
+		close: () => {
+			events.push("close");
+		},
+	};
+
+	const commander = createCommander({
+		definitions: [mission],
+		persistence,
+	});
+	const loaded = await commander.getMission<typeof mission>(
+		"mission-recoverable",
+	);
+	assert.ok(loaded);
+	assert.deepEqual(events.slice(0, 2), ["bootstrap", "listRecoverable"]);
+
+	commander.close();
+	assert.equal(events.at(-1), "close");
+});
+
 test("createCommander defaults to in-memory execution", async () => {
 	const mission = m
 		.define("approval")
