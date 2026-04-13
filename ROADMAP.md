@@ -51,7 +51,11 @@ Mission Control v1 is only real when all of the following are true:
 
 ## Naming and structure direction
 
-Durable backends belong under:
+The shared core package belongs at:
+
+- `core`
+
+Runtime adapters belong under:
 
 - `adapters/<name>`
 

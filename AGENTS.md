@@ -53,8 +53,8 @@ unless the roadmap and current implementation actually justify them.
 
 Primary product areas:
 
-- `packages/core`
-- `packages/in-memory-commander`
+- `core`
+- `adapters/in-memory`
 - `adapters/*`
 - `examples/*`
 - root docs (`README.md`, `AGENTS.md`, `ROADMAP.md`, `SOURCEMAP.md`)
@@ -69,7 +69,7 @@ Expected adapter layout:
 
 ### 1. Core stays runtime-neutral
 
-`packages/core` owns:
+`core` owns:
 
 - the mission DSL
 - shared types and contracts
@@ -111,7 +111,7 @@ A specific adapter may be the first one to reach production quality, but the rep
 
 ### 4. In-memory stays explicit
 
-`packages/in-memory-commander` is for:
+`adapters/in-memory` is for:
 
 - local development
 - examples
@@ -204,8 +204,6 @@ New durable backends belong in:
 with package names shaped like:
 
 - `@mission-control/adapter-<name>`
-
-Do not add new durable backends under `packages/*`.
 
 ### 7. Tests are mandatory
 

@@ -22,7 +22,7 @@
 	},
 	"workspaces": [
 		"apps/*",
-		"packages/*",
+		"core",
 		"adapters/*",
 		"examples/*"
 	]

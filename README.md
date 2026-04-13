@@ -65,7 +65,7 @@ This package should remain runtime-neutral.
 
 Owns:
 
-- the explicit in-memory runtime
+- the explicit in-memory runtime adapter
 - local testing helpers
 - deterministic development behavior
 
@@ -92,17 +92,17 @@ Adapters own backend-specific concerns such as:
 
 The repository workspace is shaped like:
 
-- `packages/core`
-- `packages/in-memory-commander`
+- `core`
 - `adapters/*`
 - `examples/*`
 
-Durable backends now live under:
+The current adapter directories include:
 
+- `adapters/in-memory`
 - `adapters/postgres`
 - `adapters/sqlite`
 
-They are exposed with adapter package names rather than the older `*-commander` naming.
+`@mission-control/core` now lives at the repo root, and the runtime implementations live under `adapters/*`.
 
 ## What Mission Control does well already
 

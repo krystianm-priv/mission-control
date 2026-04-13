@@ -26,14 +26,14 @@
 - root workspace config
 - currently includes the real workspace roots that exist today
 - includes:
-  - `packages/*`
+  - `core`
   - `adapters/*`
   - `examples/*`
   - any additional app workspace only if it is genuinely in scope
 
 ## Primary package / workspace boundaries
 
-## `packages/core`
+## `core`
 
 Purpose:
 
@@ -60,7 +60,7 @@ Typical files of interest:
 - commander abstractions
 - adapter contract types
 
-## `packages/in-memory-commander`
+## `adapters/in-memory`
 
 Purpose:
 
@@ -154,10 +154,10 @@ Mission Control should be understood as:
    - the DSL
    - the engine
    - the contracts
-2. `in-memory-commander`
-   - the local / ephemeral runtime
+2. `adapters/in-memory`
+   - the local / ephemeral runtime adapter
 3. `adapters/*`
-   - durable persistence backends
+   - runtime adapters, including durable persistence backends
 
 The durable backend is an implementation detail of the adapter boundary, not of `core`.
 
@@ -176,7 +176,7 @@ These are the intended long-term architectural anchors:
 
 - `core` remains runtime-neutral
 - in-memory runtime stays explicit
-- durable backends live under `adapters/*`
+- runtime adapters live under `adapters/*`
 - durable backend package names use `@mission-control/adapter-*`
 - v1 must be honest about guarantees and limits
 

@@ -1,6 +1,6 @@
 # @mission-control/in-memory-commander
 
-`@mission-control/in-memory-commander` provides the in-memory runtime implementation for Mission Control.
+`@mission-control/in-memory-commander` provides the in-memory runtime adapter for Mission Control.
 
 ## Public surface
 
