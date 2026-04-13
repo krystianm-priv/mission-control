@@ -188,10 +188,7 @@ test("recoverRuntime rejects waiting status without waiting metadata", async () 
 		timers: [],
 	});
 
-	await assert.rejects(
-		() => recoverRuntime(runtime),
-		MissionExecutionError,
-	);
+	await assert.rejects(() => recoverRuntime(runtime), MissionExecutionError);
 });
 
 test("recoverRuntime rejects waiting metadata with a non-waiting status", async () => {
@@ -229,10 +226,7 @@ test("recoverRuntime rejects waiting metadata with a non-waiting status", async 
 		timers: [],
 	});
 
-	await assert.rejects(
-		() => recoverRuntime(runtime),
-		MissionExecutionError,
-	);
+	await assert.rejects(() => recoverRuntime(runtime), MissionExecutionError);
 });
 
 test("recoverRuntime resumes persisted sleep timers with durable timer state", async () => {
@@ -247,7 +241,9 @@ test("recoverRuntime resumes persisted sleep timers with durable timer state", a
 		.step("finish", async () => ({ ok: true }))
 		.end();
 
-	const created = createEngineRuntime(mission, "mission-timer-recovery", { clock });
+	const created = createEngineRuntime(mission, "mission-timer-recovery", {
+		clock,
+	});
 	await startRuntime(created, { id: "123" });
 	const persisted = inspectRuntime(created);
 
@@ -313,10 +309,7 @@ test("recoverRuntime rejects persisted timer waits without due times", async () 
 		nodeIndex: 1,
 	} as unknown as typeof runtime.snapshot.waiting;
 
-	await assert.rejects(
-		() => recoverRuntime(runtime),
-		MissionExecutionError,
-	);
+	await assert.rejects(() => recoverRuntime(runtime), MissionExecutionError);
 });
 
 test("recoverRuntime resumes persisted retry backoff with durable attempt state", async () => {
@@ -341,7 +334,9 @@ test("recoverRuntime resumes persisted retry backoff with durable attempt state"
 		)
 		.end();
 
-	const created = createEngineRuntime(mission, "mission-retry-recovery", { clock });
+	const created = createEngineRuntime(mission, "mission-retry-recovery", {
+		clock,
+	});
 	await startRuntime(created, { id: "123" });
 	const persisted = inspectRuntime(created);
 

@@ -242,7 +242,7 @@ Acceptance criteria:
 - adapter docs match actual behavior
 
 ### MC-009 — Make the first durable adapter publishable
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 
@@ -264,7 +264,7 @@ Acceptance criteria:
 ## Milestone 5 — Release path cleanup
 
 ### MC-010 — Align examples with the real public architecture
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 
@@ -283,7 +283,7 @@ Acceptance criteria:
 - examples demonstrate the intended v1 API
 
 ### MC-011 — Align verification and release scripts with the real package graph
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 
@@ -302,7 +302,7 @@ Acceptance criteria:
 - no stale package references remain
 
 ### MC-012 — Final documentation pass for an honest v1
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

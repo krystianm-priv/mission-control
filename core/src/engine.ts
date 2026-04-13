@@ -70,7 +70,12 @@ function createCompletionState(): CompletionState {
 
 function toErrorShape(error: unknown, at: string) {
 	if (error instanceof Error) {
-		const shaped: { message: string; at: string; code?: string; stack?: string } = {
+		const shaped: {
+			message: string;
+			at: string;
+			code?: string;
+			stack?: string;
+		} = {
 			message: error.message,
 			at,
 		};

@@ -3,12 +3,12 @@ import test from "node:test";
 import {
 	type CommanderPersistenceAdapter,
 	createCommander,
-	type MissionInspection,
-	type RecoverableMissionInspection,
 	isRecoverableMissionInspection,
 	isScheduledMissionSnapshot,
 	isWaitingMissionSnapshot,
+	type MissionInspection,
 	m,
+	type RecoverableMissionInspection,
 } from "./index.ts";
 
 class MemoryPersistenceAdapter implements CommanderPersistenceAdapter {

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MissionValidationError } from "@mission-control/core";
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
+import { createCommander, MissionValidationError } from "@mission-control/core";
 
 import { askForReviewMission } from "./mission-definition.ts";
 
@@ -9,14 +8,13 @@ const validEmail = "user@example.com";
 const invalidEmail = "not-an-email";
 
 test("e2e: full happy path", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "mission-e2e-1",
 		definitions: [askForReviewMission],
 	});
-
-	const mission = commander.createMission(askForReviewMission);
-
-	await mission.start({ email: validEmail });
+	const mission = await commander.start(askForReviewMission, {
+		email: validEmail,
+	});
 
 	assert.equal(mission.status, "waiting");
 
@@ -49,30 +47,29 @@ test("e2e: full happy path", async () => {
 });
 
 test("e2e: invalid start input fails fast", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "mission-e2e-2",
 		definitions: [askForReviewMission],
 	});
-
-	const mission = commander.createMission(askForReviewMission);
-
 	await assert.rejects(
-		() => mission.start({ email: invalidEmail }),
+		() => commander.start(askForReviewMission, { email: invalidEmail }),
 		MissionValidationError,
 	);
 
+	const mission =
+		await commander.getMission<typeof askForReviewMission>("mission-e2e-2");
+	assert.ok(mission);
 	assert.equal(mission.status, "failed");
 });
 
 test("e2e: invalid signal input keeps the mission waiting", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "mission-e2e-3",
 		definitions: [askForReviewMission],
 	});
-
-	const mission = commander.createMission(askForReviewMission);
-
-	await mission.start({ email: validEmail });
+	const mission = await commander.start(askForReviewMission, {
+		email: validEmail,
+	});
 
 	await assert.rejects(
 		() => mission.signal("receive-review", 123 as never),
@@ -84,14 +81,13 @@ test("e2e: invalid signal input keeps the mission waiting", async () => {
 });
 
 test("e2e: spam review causes failure", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "mission-e2e-4",
 		definitions: [askForReviewMission],
 	});
-
-	const mission = commander.createMission(askForReviewMission);
-
-	await mission.start({ email: validEmail });
+	const mission = await commander.start(askForReviewMission, {
+		email: validEmail,
+	});
 
 	await assert.rejects(() =>
 		mission.signal("receive-review", "this is spam content"),

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+	createCommander,
 	MissionSignalError,
 	MissionValidationError,
 } from "@mission-control/core";
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
 
 import { orderFulfillmentMission } from "./mission-definition.ts";
 
@@ -17,14 +17,11 @@ const validInput = {
 };
 
 test("e2e: full happy path", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "order-1",
 		definitions: [orderFulfillmentMission],
 	});
-
-	const mission = commander.createMission(orderFulfillmentMission);
-
-	await mission.start(validInput);
+	const mission = await commander.start(orderFulfillmentMission, validInput);
 
 	// should wait for payment
 	assert.equal(mission.status, "waiting");
@@ -65,34 +62,31 @@ test("e2e: full happy path", async () => {
 });
 
 test("e2e: invalid start input fails", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "order-2",
 		definitions: [orderFulfillmentMission],
 	});
-
-	const mission = commander.createMission(orderFulfillmentMission);
-
 	await assert.rejects(
 		() =>
-			mission.start({
+			commander.start(orderFulfillmentMission, {
 				...validInput,
 				email: "bad-email",
 			} as never),
 		MissionValidationError,
 	);
 
+	const mission =
+		await commander.getMission<typeof orderFulfillmentMission>("order-2");
+	assert.ok(mission);
 	assert.equal(mission.status, "failed");
 });
 
 test("e2e: invalid payment signal keeps the mission waiting", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "order-3",
 		definitions: [orderFulfillmentMission],
 	});
-
-	const mission = commander.createMission(orderFulfillmentMission);
-
-	await mission.start(validInput);
+	const mission = await commander.start(orderFulfillmentMission, validInput);
 
 	await assert.rejects(
 		() =>
@@ -100,23 +94,23 @@ test("e2e: invalid payment signal keeps the mission waiting", async () => {
 				paymentId: "pay-1",
 				amount: -1, // invalid
 				currency: "USD",
-		} as never),
+			} as never),
 		MissionValidationError,
 	);
 
 	assert.equal(mission.status, "waiting");
-	assert.equal(mission.inspect().snapshot.waiting?.eventName, "confirm-payment");
+	assert.equal(
+		mission.inspect().snapshot.waiting?.eventName,
+		"confirm-payment",
+	);
 });
 
 test("e2e: wrong signal name fails", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "order-4",
 		definitions: [orderFulfillmentMission],
 	});
-
-	const mission = commander.createMission(orderFulfillmentMission);
-
-	await mission.start(validInput);
+	const mission = await commander.start(orderFulfillmentMission, validInput);
 
 	await assert.rejects(
 		() =>
@@ -131,22 +125,22 @@ test("e2e: wrong signal name fails", async () => {
 });
 
 test("e2e: inventory unavailable fails early", async () => {
-	const commander = new InMemoryCommander({
+	const commander = createCommander({
 		createMissionId: () => "order-5",
 		definitions: [orderFulfillmentMission],
 	});
-
-	const mission = commander.createMission(orderFulfillmentMission);
-
 	// try forcing failure via quantity (depends on your fakeInventoryCheck logic)
 	await assert.rejects(
 		() =>
-			mission.start({
+			commander.start(orderFulfillmentMission, {
 				...validInput,
 				quantity: 999999, // assume this triggers unavailable
 			}),
 		Error,
 	);
 
+	const mission =
+		await commander.getMission<typeof orderFulfillmentMission>("order-5");
+	assert.ok(mission);
 	assert.equal(mission.status, "failed");
 });

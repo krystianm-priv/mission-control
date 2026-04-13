@@ -24,12 +24,13 @@
 ### `package.json`
 
 - root workspace config
+- release and verification entrypoint
 - currently includes the real workspace roots that exist today
 - includes:
   - `core`
   - `adapters/*`
   - `examples/*`
-  - any additional app workspace only if it is genuinely in scope
+- should not reference workspace globs that do not exist
 
 ## Primary package / workspace boundaries
 
@@ -134,18 +135,21 @@ Typical responsibilities:
 
 - small in-memory mission example
 - useful for local engine semantics
+- should use the shared `createCommander(...)` API instead of the legacy in-memory wrapper in tests
 - should not imply durable guarantees
 
 ### `examples/order-fulfillment`
 
 - in-memory multi-step mission example
 - useful for waits / signals / sequencing
+- should use the shared `createCommander(...)` API instead of the legacy in-memory wrapper in tests
 - should not overclaim production workflow guarantees
 
 ### `examples/durable-reminder`
 
 - durable adapter example
 - uses the current v1 reference adapter: `@mission-control/adapter-postgres`
+- should exercise the Postgres adapter directly in its example tests when the optional local Postgres harness is available
 - useful for reload / timer / retry examples
 
 ## Conceptual architecture

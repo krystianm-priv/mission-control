@@ -95,8 +95,9 @@ The first reference durable backend for Mission Control v1 is `@mission-control/
 That choice is based on the current repository state:
 
 - `@mission-control/adapter-postgres` is already shaped like a publishable package
+- its publishable tarball is now scoped to runtime source plus README instead of test fixtures
 - it uses an explicit `execute(query)` boundary instead of relying on Node experimental runtime features
-- the durable example and release-pack flow already point at the Postgres adapter
+- the durable example and release-pack flow point at the Postgres adapter
 - restart-recovery coverage for signals, sleep timers, and retry backoff already exists for it
 
 `@mission-control/adapter-sqlite` remains valuable for local comparison and continued iteration, but it is not the reference v1 backend today.
@@ -138,6 +139,7 @@ Mission Control v1 is only real once all of the following are true:
 - the durable adapter contract is clearly defined in `core`
 - at least one durable adapter is genuinely publishable
 - restart-safe recovery for signals, timers, and retries is proven for that adapter
+- examples compile against the shared `createCommander(...)` API and the reference durable adapter
 - docs stop overclaiming current maturity
 - examples, exports, and release scripts match the real package graph
 

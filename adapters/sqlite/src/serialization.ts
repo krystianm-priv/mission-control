@@ -34,7 +34,7 @@ export function serializeInspection(
 		waiting_kind: waiting?.kind ?? null,
 		waiting_event_name: waiting?.eventName ?? null,
 		waiting_node_index: waiting?.nodeIndex ?? null,
-		timeout_at: waiting?.kind === "signal" ? waiting.timeoutAt ?? null : null,
+		timeout_at: waiting?.kind === "signal" ? (waiting.timeoutAt ?? null) : null,
 		timer_due_at:
 			waiting?.kind === "timer" || waiting?.kind === "retry"
 				? waiting.timerDueAt
@@ -67,10 +67,7 @@ export function deserializeInspection(
 					} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
 				}
 				return {
-					kind:
-						row.waiting_kind === "retry"
-							? "retry"
-							: "timer",
+					kind: row.waiting_kind === "retry" ? "retry" : "timer",
 					eventName: row.waiting_event_name ?? "",
 					nodeIndex,
 					timerDueAt: row.timer_due_at ?? new Date(0).toISOString(),

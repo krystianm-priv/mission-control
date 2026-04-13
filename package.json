@@ -9,6 +9,7 @@
 	"engineStrict": true,
 	"scripts": {
 		"format": "biome check --write --unsafe",
+		"lint": "biome check .",
 		"check-types": "tsc",
 		"test": "node --test",
 		"test:watch": "node --test --watch",
@@ -21,7 +22,6 @@
 		"typescript": "6.0.2"
 	},
 	"workspaces": [
-		"apps/*",
 		"core",
 		"adapters/*",
 		"examples/*"

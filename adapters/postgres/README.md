@@ -17,6 +17,15 @@ It provides:
 The current recommended API is `createCommander(...)` from `@mission-control/core` plus `createPgPersistenceAdapter(...)` from this package.
 `PgCommander` remains as a thin compatibility wrapper around that shared implementation.
 
+## Publishable surface
+
+The package tarball is intentionally scoped to:
+
+- `src/**`
+- `README.md`
+
+Repository tests and workspace-only files are excluded from the published package so the adapter boundary stays clean.
+
 The Postgres adapter does not own a database client. You pass a single `execute(query: string)` function and keep control of the underlying Postgres connection.
 It is a concrete implementation of `CommanderPersistenceAdapter` from `@mission-control/core`.
 

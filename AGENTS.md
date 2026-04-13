@@ -57,6 +57,7 @@ Primary product areas:
 - `adapters/in-memory`
 - `adapters/*`
 - `examples/*`
+- `package.json` workspace and release scripts
 - root docs (`README.md`, `AGENTS.md`, `ROADMAP.md`, `SOURCEMAP.md`)
 
 Expected adapter layout:

@@ -113,9 +113,9 @@ export class PgStore implements CommanderPersistenceAdapter {
 		);
 		return rows
 			.map(
-			(row) =>
-				deserializeInspection(row as unknown as SerializedInspectionRow)
-					.snapshot,
+				(row) =>
+					deserializeInspection(row as unknown as SerializedInspectionRow)
+						.snapshot,
 			)
 			.filter(isWaitingMissionSnapshot);
 	}
@@ -127,14 +127,16 @@ export class PgStore implements CommanderPersistenceAdapter {
 		);
 		return rows
 			.map(
-			(row) =>
-				deserializeInspection(row as unknown as SerializedInspectionRow)
-					.snapshot,
+				(row) =>
+					deserializeInspection(row as unknown as SerializedInspectionRow)
+						.snapshot,
 			)
 			.filter(isScheduledMissionSnapshot);
 	}
 
-	public async listRecoverableInspections(): Promise<RecoverableMissionInspection[]> {
+	public async listRecoverableInspections(): Promise<
+		RecoverableMissionInspection[]
+	> {
 		const rows = await executeRows(
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
