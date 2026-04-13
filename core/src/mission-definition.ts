@@ -79,6 +79,31 @@ function assertDuration(durationMs: number) {
 	}
 }
 
+function assertDefinitionExtensionNameAvailable(
+	name: string,
+	nodes: MissionNode[],
+): void {
+	if (
+		name === "start" ||
+		nodes.some((node) => "name" in node && node.name === name)
+	) {
+		throw new MissionDefinitionError(
+			`Mission definition name "${name}" is already in use by an existing mission event.`,
+		);
+	}
+}
+
+function assertMissionEventNameAvailableForUpdates(
+	name: string,
+	updates: MissionUpdateDefinition[],
+): void {
+	if (updates.some((update) => update.name === name)) {
+		throw new MissionDefinitionError(
+			`Mission definition name "${name}" is already in use by an existing mission update.`,
+		);
+	}
+}
+
 function toStaticNode(
 	node: MissionNode,
 ): MissionStaticDefinition["nodes"][number] {
@@ -117,6 +142,7 @@ function makeChainBuilder<E extends EventsMap>(
 ): ChainBuilder<E> {
 	return {
 		step(eventName, run, options) {
+			assertMissionEventNameAvailableForUpdates(eventName, updates);
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
@@ -137,6 +163,7 @@ function makeChainBuilder<E extends EventsMap>(
 		},
 
 		needTo(eventName, inputSchema, options) {
+			assertMissionEventNameAvailableForUpdates(eventName, updates);
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
@@ -154,6 +181,7 @@ function makeChainBuilder<E extends EventsMap>(
 
 		sleep(eventName, durationMs) {
 			assertDuration(durationMs);
+			assertMissionEventNameAvailableForUpdates(eventName, updates);
 
 			const nextNodes: MissionNode[] = [
 				...nodes,
@@ -212,6 +240,7 @@ export const m = {
 				return this;
 			},
 			update(name, inputSchema, run) {
+				assertDefinitionExtensionNameAvailable(name, []);
 				updates.push({
 					name,
 					inputSchema,
@@ -234,6 +263,9 @@ export const m = {
 					inputSchema: args.input,
 					run: args.run as StartNode["run"],
 				};
+				for (const update of updates) {
+					assertDefinitionExtensionNameAvailable(update.name, [startNode]);
+				}
 
 				return makeChainBuilder<{
 					start: {

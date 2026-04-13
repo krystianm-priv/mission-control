@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { MissionDefinitionError } from "./errors.ts";
 import { m } from "./mission-definition.ts";
 
 test("mission definitions preserve additive query, update, and schedule metadata", () => {
@@ -67,4 +68,27 @@ test("mission definitions preserve additive query, update, and schedule metadata
 	assert.equal(mission.queries[0]?.name, "status");
 	assert.equal(mission.updates[0]?.name, "attach-note");
 	assert.equal(mission.schedules[0]?.name, "nightly");
+});
+
+test("mission definitions reject update names that collide with mission events", () => {
+	assert.throws(
+		() =>
+			m
+				.define("collision")
+				.update(
+					"start",
+					{
+						parse: (input) => input as { note: string },
+					},
+					({ input }) => input.note,
+				)
+				.start({
+					input: {
+						parse: (input) => input as { id: string },
+					},
+					run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+				})
+				.end(),
+		MissionDefinitionError,
+	);
 });

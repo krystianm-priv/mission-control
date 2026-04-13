@@ -366,4 +366,9 @@ test("mission handles support additive queries and updates", async () => {
 		status: "waiting",
 		hasNote: true,
 	});
+	assert.equal(
+		handle.getHistory().filter((entry) => entry.type === "mission-query")
+			.length,
+		0,
+	);
 });

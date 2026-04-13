@@ -438,11 +438,6 @@ export class ConfigurableCommander extends Commander {
 					ctx: inspection.snapshot.ctx,
 					inspection,
 				});
-				runtime.history.push({
-					type: "mission-query",
-					at: this.clock.now().toISOString(),
-					eventName: name,
-				});
 				return output;
 			},
 			update: async (name, input) => {
