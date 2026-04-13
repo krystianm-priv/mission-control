@@ -1,6 +1,7 @@
 import type { RetryPolicy } from "./retry-policy.ts";
 import type { AnyInputSchema, iInferInput } from "./schema.ts";
 import type { NeedToOptions, SleepResult } from "./timer.ts";
+import type { MissionInspection } from "./contracts.d.ts";
 
 export interface EventRecord {
 	input?: unknown;
@@ -55,6 +56,31 @@ export interface EndNode {
 	kind: "end";
 }
 
+export interface MissionQueryDefinition {
+	name: string;
+	run: (args: {
+		ctx: MissionContext;
+		inspection: MissionInspection;
+	}) => Promise<unknown> | unknown;
+}
+
+export interface MissionUpdateDefinition {
+	name: string;
+	inputSchema: AnyInputSchema;
+	run: (args: {
+		ctx: MissionContext;
+		input: unknown;
+		inspection: MissionInspection;
+	}) => Promise<unknown> | unknown;
+}
+
+export interface MissionScheduleDefinition {
+	name: string;
+	cron?: string;
+	every?: string;
+	overlapPolicy?: "allow" | "skip" | "buffer";
+}
+
 export type MissionNode =
 	| StartNode
 	| StepNode
@@ -71,11 +97,17 @@ export interface MissionStaticDefinition {
 		| { kind: "sleep"; name: string; durationMs: number }
 		| { kind: "end" }
 	>;
+	queries: Array<{ name: string }>;
+	updates: Array<{ name: string }>;
+	schedules: MissionScheduleDefinition[];
 }
 
 export interface MissionDefinition<E extends EventsMap = EventsMap> {
 	missionName: string;
 	nodes: MissionNode[];
+	queries: MissionQueryDefinition[];
+	updates: MissionUpdateDefinition[];
+	schedules: MissionScheduleDefinition[];
 	toStatic(): MissionStaticDefinition;
 	context: MissionContext<E>;
 }

@@ -19,6 +19,7 @@ import {
 	startRuntime,
 	waitForCompletion,
 } from "./engine.ts";
+import { parseMissionInput } from "./schema.ts";
 import type { MissionDefinition } from "./types.d.ts";
 
 export interface CommanderOptions {
@@ -422,8 +423,70 @@ export class ConfigurableCommander extends Commander {
 				await this.ensureReady();
 				await signalRuntime(runtime, eventName, input);
 			},
+			query: async (name) => {
+				await this.ensureReady();
+				const query = runtime.definition.queries.find(
+					(candidate) => candidate.name === name,
+				);
+				if (!query) {
+					throw new Error(
+						`Mission query "${name}" is not registered on "${runtime.definition.missionName}".`,
+					);
+				}
+				const inspection = inspectRuntime(runtime);
+				const output = await query.run({
+					ctx: inspection.snapshot.ctx,
+					inspection,
+				});
+				runtime.history.push({
+					type: "mission-query",
+					at: this.clock.now().toISOString(),
+					eventName: name,
+				});
+				return output;
+			},
+			update: async (name, input) => {
+				await this.ensureReady();
+				if (
+					runtime.snapshot.status === "completed" ||
+					runtime.snapshot.status === "failed"
+				) {
+					throw new Error(
+						`Mission "${runtime.snapshot.missionId}" is already terminal and cannot accept updates.`,
+					);
+				}
+				const update = runtime.definition.updates.find(
+					(candidate) => candidate.name === name,
+				);
+				if (!update) {
+					throw new Error(
+						`Mission update "${name}" is not registered on "${runtime.definition.missionName}".`,
+					);
+				}
+				const parsedInput = parseMissionInput(name, update.inputSchema, input);
+				const output = await update.run({
+					ctx: runtime.snapshot.ctx,
+					input: parsedInput,
+					inspection: inspectRuntime(runtime),
+				});
+				runtime.snapshot.ctx.events[name] = {
+					input: parsedInput,
+					output,
+				};
+				runtime.history.push({
+					type: "mission-update",
+					at: this.clock.now().toISOString(),
+					eventName: name,
+				});
+				await runtime.persist?.(runtime);
+				return output;
+			},
 			inspect: () => inspectRuntime(runtime),
 			getHistory: () => inspectRuntime(runtime).history,
+			result: async () => {
+				await this.ensureReady();
+				return waitForCompletion(runtime);
+			},
 			waitForCompletion: async () => {
 				await this.ensureReady();
 				return waitForCompletion(runtime);

@@ -10,7 +10,10 @@ import type {
 	MissionContext,
 	MissionDefinition,
 	MissionNode,
+	MissionQueryDefinition,
+	MissionScheduleDefinition,
 	MissionStaticDefinition,
+	MissionUpdateDefinition,
 	NeedToInput,
 	SleepEventRecord,
 	StartNode,
@@ -39,6 +42,23 @@ type ChainBuilder<E extends EventsMap> = {
 };
 
 type DefineBuilder<_Name extends string> = {
+	query(name: string, run: MissionQueryDefinition["run"]): DefineBuilder<_Name>;
+
+	update<S extends AnyInputSchema>(
+		name: string,
+		inputSchema: S,
+		run: (args: {
+			ctx: MissionContext;
+			input: iInferInput<S>;
+			inspection: import("./contracts.d.ts").MissionInspection;
+		}) => Promise<unknown> | unknown,
+	): DefineBuilder<_Name>;
+
+	schedule(
+		name: string,
+		options: Omit<MissionScheduleDefinition, "name">,
+	): DefineBuilder<_Name>;
+
 	start<S extends AnyInputSchema, StartOutput extends object>(args: {
 		input: S;
 		run: (args: {
@@ -91,6 +111,9 @@ function toStaticNode(
 function makeChainBuilder<E extends EventsMap>(
 	missionName: string,
 	nodes: MissionNode[],
+	queries: MissionQueryDefinition[],
+	updates: MissionUpdateDefinition[],
+	schedules: MissionScheduleDefinition[],
 ): ChainBuilder<E> {
 	return {
 		step(eventName, run, options) {
@@ -110,7 +133,7 @@ function makeChainBuilder<E extends EventsMap>(
 					typeof eventName,
 					{ output: Awaited<ReturnType<typeof run>> }
 				>
-			>(missionName, nextNodes);
+			>(missionName, nextNodes, queries, updates, schedules);
 		},
 
 		needTo(eventName, inputSchema, options) {
@@ -126,7 +149,7 @@ function makeChainBuilder<E extends EventsMap>(
 
 			return makeChainBuilder<
 				AddEvent<E, typeof eventName, NeedToInput<typeof inputSchema>>
-			>(missionName, nextNodes);
+			>(missionName, nextNodes, queries, updates, schedules);
 		},
 
 		sleep(eventName, durationMs) {
@@ -144,6 +167,9 @@ function makeChainBuilder<E extends EventsMap>(
 			return makeChainBuilder<AddEvent<E, typeof eventName, SleepEventRecord>>(
 				missionName,
 				nextNodes,
+				queries,
+				updates,
+				schedules,
 			);
 		},
 
@@ -160,8 +186,14 @@ function makeChainBuilder<E extends EventsMap>(
 					return {
 						missionName,
 						nodes: finalNodes.map(toStaticNode),
+						queries: queries.map(({ name }) => ({ name })),
+						updates: updates.map(({ name }) => ({ name })),
+						schedules: structuredClone(schedules),
 					};
 				},
+				queries: [...queries],
+				updates: [...updates],
+				schedules: [...schedules],
 				context: null as unknown as MissionContext<E>,
 			} satisfies MissionDefinition<E>;
 		},
@@ -170,7 +202,32 @@ function makeChainBuilder<E extends EventsMap>(
 
 export const m = {
 	define<Name extends string>(missionName: Name): DefineBuilder<Name> {
+		const queries: MissionQueryDefinition[] = [];
+		const updates: MissionUpdateDefinition[] = [];
+		const schedules: MissionScheduleDefinition[] = [];
+
 		return {
+			query(name, run) {
+				queries.push({ name, run });
+				return this;
+			},
+			update(name, inputSchema, run) {
+				updates.push({
+					name,
+					inputSchema,
+					run: run as MissionUpdateDefinition["run"],
+				});
+				return this;
+			},
+			schedule(name, options) {
+				if (!options.cron && !options.every) {
+					throw new MissionDefinitionError(
+						"Schedule definitions require either a cron expression or an every interval.",
+					);
+				}
+				schedules.push({ name, ...options });
+				return this;
+			},
 			start(args) {
 				const startNode: StartNode = {
 					kind: "start",
@@ -183,7 +240,7 @@ export const m = {
 						input: iInferInput<typeof args.input>;
 						output: Awaited<ReturnType<typeof args.run>>;
 					};
-				}>(missionName, [startNode]);
+				}>(missionName, [startNode], queries, updates, schedules);
 			},
 		};
 	},

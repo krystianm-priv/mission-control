@@ -329,3 +329,26 @@ These are acceptable for v1 unless the roadmap later says otherwise:
 - workflow versioning may remain post-v1
 - some user-code idempotency responsibilities may remain on the app developer
 - only one durable adapter may be production-grade at v1 time
+
+## Post-v1 architecture track
+
+### MC-013 — Add preserved-DSL runtime and client foundations
+**Status:** [x]
+
+Depends on:
+
+- MC-012
+
+Scope:
+
+- preserve the authored mission DSL exactly
+- add additive metadata for queries, updates, and schedules
+- introduce `runtime`, `client`, `testing`, and `cli` package boundaries
+- keep the new foundations thin and compatible with the current engine
+
+Acceptance criteria:
+
+- the existing mission DSL remains the canonical authored surface
+- mission definitions can register query, update, and schedule metadata
+- runtime and client packages exist and work against the current commander engine
+- tests cover the new foundation behavior without overclaiming full platform parity

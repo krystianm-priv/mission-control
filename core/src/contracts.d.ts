@@ -88,6 +88,8 @@ export interface MissionHistoryRecord {
 	type:
 		| "mission-created"
 		| "mission-started"
+		| "mission-query"
+		| "mission-update"
 		| "step-succeeded"
 		| "step-failed"
 		| "step-retry-scheduled"
@@ -152,7 +154,10 @@ export interface MissionHandle<M extends MissionDefinition> {
 			? Input
 			: never,
 	): Promise<void>;
+	query?(name: string): Promise<unknown>;
+	update?(name: string, input: unknown): Promise<unknown>;
 	inspect(): MissionInspection;
 	getHistory(): MissionHistoryRecord[];
+	result?(): Promise<MissionSnapshot>;
 	waitForCompletion(): Promise<MissionSnapshot>;
 }

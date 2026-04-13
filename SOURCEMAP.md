@@ -28,6 +28,10 @@
 - currently includes the real workspace roots that exist today
 - includes:
   - `core`
+  - `runtime`
+  - `client`
+  - `testing`
+  - `cli`
   - `adapters/*`
   - `examples/*`
 - should not reference workspace globs that do not exist
@@ -60,6 +64,33 @@ Typical files of interest:
 - retry / timer helpers
 - commander abstractions
 - adapter contract types and persistence contract helpers
+- additive metadata for mission queries, updates, and schedules
+
+## `runtime`
+
+Purpose:
+
+- embedded commander runtime lifecycle
+- thin start / stop boundary around the preserved mission DSL
+
+## `client`
+
+Purpose:
+
+- mission-native client helpers for starting missions and interacting with handles
+- thin wrappers around signal, query, update, inspect, and result flows
+
+## `testing`
+
+Purpose:
+
+- shared fake clocks and async testing helpers
+
+## `cli`
+
+Purpose:
+
+- formatting and future command boundary for mission inspection tooling
 
 ## `adapters/in-memory`
 

@@ -5,11 +5,13 @@
 ## Public surface
 
 - `m.define(...).start(...).step(...).needTo(...).sleep(...).end()`
+- additive definition metadata: `m.define(...).query(...)`, `m.define(...).update(...)`, `m.define(...).schedule(...)`
 - schema helpers: `Schema`, `AnyInputSchema`, `Infer`, `parseMissionInput`
 - retry helpers: `DEFAULT_RETRY_POLICY`, `normalizeRetryPolicy`, `getRetryDelayMs`
 - timer helpers: `NeedToOptions`, `WaitTimeoutDefinition`, `SleepResult`
 - commander contracts: `MissionSnapshot`, `MissionInspection`, `MissionFailure`, `SignalWaitingState`, `TimerWaitingState`, `RetryWaitingState`, `WaitingMissionSnapshot`, `ScheduledMissionSnapshot`, `RecoverableMissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
 - configurable runtime APIs: `createCommander`, `ConfigurableCommander`, `CommanderPersistenceAdapter`, `isWaitingMissionSnapshot`, `isScheduledMissionSnapshot`, `isRecoverableMissionInspection`
+- mission handle helpers: `query(...)`, `update(...)`, `result()`
 - runtime engine helpers: `createEngineRuntime`, `hydrateEngineRuntime`, `recoverRuntime`, `startRuntime`, `signalRuntime`, `runUntilWaitOrEnd`
 - abstract base class: `Commander`
 
@@ -54,6 +56,16 @@ What `core` does not solve by itself:
 - preventing replay when user code performs an external side effect before the next persisted inspection write completes
 
 When documenting or implementing adapters, treat mission recovery as restart-safe for persisted mission state, but treat user code as replayable unless the application adds its own idempotency boundary.
+
+## Additive metadata
+
+`core` now lets mission definitions register additive metadata without changing the authored chain:
+
+- `query(name, run)` for read-only inspection helpers
+- `update(name, inputSchema, run)` for durable mutation helpers that persist mission context
+- `schedule(name, { cron | every, overlapPolicy? })` for future runtime scheduling metadata
+
+These additions do not yet make Mission Control a full event-sourced multi-worker platform. They are thin foundations that preserve the DSL while the deeper runtime architecture evolves.
 
 ## Example
 

@@ -14,7 +14,7 @@
 		"test": "node --test",
 		"test:watch": "node --test --watch",
 		"release:check": "npm run check-types && npm run lint && npm run test && npm run release:pack",
-		"release:pack": "npm_config_cache=/tmp/mission-control-npm-cache npm pack --workspace @mission-control/core --workspace @mission-control/in-memory-commander --workspace @mission-control/adapter-postgres --dry-run"
+		"release:pack": "npm_config_cache=/tmp/mission-control-npm-cache npm pack --workspace @mission-control/core --workspace @mission-control/in-memory-commander --workspace @mission-control/adapter-postgres --workspace @mission-control/runtime --workspace @mission-control/client --workspace @mission-control/testing --workspace @mission-control/cli --dry-run"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.13",
@@ -23,6 +23,10 @@
 	},
 	"workspaces": [
 		"core",
+		"runtime",
+		"client",
+		"testing",
+		"cli",
 		"adapters/*",
 		"examples/*"
 	]

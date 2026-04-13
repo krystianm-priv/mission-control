@@ -107,6 +107,10 @@ That choice is based on the current repository state:
 The repository workspace is shaped like:
 
 - `core`
+- `runtime`
+- `client`
+- `testing`
+- `cli`
 - `adapters/*`
 - `examples/*`
 
@@ -123,11 +127,13 @@ The current adapter directories include:
 Today the repo already demonstrates:
 
 - typed start and signal inputs
+- additive mission metadata for queries, updates, and schedules
 - mission flows with explicit waits
 - timer-based pauses
 - retry policy metadata and execution
 - mission inspection state
 - rehydration-oriented runtime state
+- thin `runtime` and `client` package boundaries around the preserved mission DSL
 
 That makes it a strong foundation.
 
@@ -166,6 +172,7 @@ What the current runtime does guarantee:
 - mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, and terminal failures
 - recovery can rehydrate waiting and running missions from persisted inspection state
 - retries, timer wakeups, and signal handling are explicit in mission history and inspection output
+- additive mission queries and updates can be registered on definitions and executed through mission handles
 
 What the current runtime does not guarantee:
 

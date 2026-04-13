@@ -313,3 +313,57 @@ test("waitUntilReady allows createMission after async initialization", async () 
 	await handle.start({ id: "123" });
 	assert.equal(handle.status, "completed");
 });
+
+test("mission handles support additive queries and updates", async () => {
+	const mission = m
+		.define("query-update")
+		.query("status", ({ inspection }) => ({
+			status: inspection.snapshot.status,
+			hasNote:
+				inspection.snapshot.ctx.events["attach-note"]?.output !== undefined,
+		}))
+		.update(
+			"attach-note",
+			{
+				parse: (input) => {
+					const value = input as { note?: unknown };
+					if (typeof value.note !== "string") {
+						throw new Error("Invalid note.");
+					}
+					return { note: value.note };
+				},
+			},
+			({ input }) => input.note,
+		)
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.end();
+
+	const commander = createCommander({
+		definitions: [mission],
+		createMissionId: () => "mission-query-update",
+	});
+
+	const handle = await commander.start(mission, { id: "123" });
+	assert.deepEqual(await handle.query?.("status"), {
+		status: "waiting",
+		hasNote: false,
+	});
+	assert.equal(
+		await handle.update?.("attach-note", { note: "hello" }),
+		"hello",
+	);
+	assert.equal(
+		handle.inspect().snapshot.ctx.events["attach-note"]?.output,
+		"hello",
+	);
+	assert.deepEqual(await handle.query?.("status"), {
+		status: "waiting",
+		hasNote: true,
+	});
+});
