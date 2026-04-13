@@ -9,10 +9,9 @@
 	"engineStrict": true,
 	"scripts": {
 		"format": "biome check --write --unsafe",
-		"lint": "npm run --workspaces --if-present lint",
-		"check-types": "npm run --workspaces --if-present check-types",
-		"test": "npm run --workspaces --if-present test",
-		"test:watch": "node --experimental-strip-types --test --watch",
+		"check-types": "tsc --noEmit --skipLibCheck",
+		"test": "node --test",
+		"test:watch": "node --test --watch",
 		"release:check": "npm run check-types && npm run lint && npm run test && npm run release:pack",
 		"release:pack": "npm_config_cache=/tmp/mission-control-npm-cache npm pack --workspace @mission-control/core --workspace @mission-control/in-memory-commander --workspace @mission-control/postgres-commander --dry-run"
 	},

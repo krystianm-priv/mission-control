@@ -21,8 +21,10 @@ function tryRequire(specifier: string): SQLiteDatabaseConstructor | undefined {
 	try {
 		const moduleExports = require(specifier) as Record<string, unknown>;
 		const candidate =
-			(moduleExports.DatabaseSync as SQLiteDatabaseConstructor | undefined) ??
-			(moduleExports.Database as SQLiteDatabaseConstructor | undefined);
+			(moduleExports["DatabaseSync"] as
+				| SQLiteDatabaseConstructor
+				| undefined) ??
+			(moduleExports["Database"] as SQLiteDatabaseConstructor | undefined);
 		return candidate;
 	} catch {
 		return undefined;

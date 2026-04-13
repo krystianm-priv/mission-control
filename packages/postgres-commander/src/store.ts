@@ -36,8 +36,8 @@ export class PgStore {
 			`SELECT created_at FROM mc_missions WHERE mission_id = ${sqlLiteral(inspection.snapshot.missionId)}`,
 		);
 		const existingCreatedAt =
-			typeof existingRows[0]?.created_at === "string"
-				? existingRows[0].created_at
+			typeof existingRows[0]?.["created_at"] === "string"
+				? existingRows[0]["created_at"]
 				: undefined;
 		const row = serializeInspection(inspection, existingCreatedAt);
 		await executeStatement(

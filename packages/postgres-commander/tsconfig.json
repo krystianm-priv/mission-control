@@ -1,10 +1,4 @@
 {
 	"extends": "../../tsconfig.base.json",
-	"compilerOptions": {
-		"noEmit": true,
-		"paths": {
-			"@mission-control/core": ["../core/src/index.ts"]
-		}
-	},
 	"include": ["src/**/*.ts"]
 }

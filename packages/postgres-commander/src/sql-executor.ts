@@ -7,7 +7,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function hasRows(value: unknown): value is { rows: SqlRow[] } {
-	return isRecord(value) && Array.isArray(value.rows);
+	return isRecord(value) && Array.isArray(value["rows"]);
 }
 
 export async function executeStatement(
@@ -40,8 +40,8 @@ export async function executeRows(
 		return result.rows;
 	}
 
-	if (isRecord(result) && Array.isArray(result.result)) {
-		return result.result as SqlRow[];
+	if (isRecord(result) && Array.isArray(result["result"])) {
+		return result["result"] as SqlRow[];
 	}
 
 	return [];

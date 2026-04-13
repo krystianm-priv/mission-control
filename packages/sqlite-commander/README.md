@@ -1,6 +1,8 @@
 # @mission-control/sqlite-commander
 
-`@mission-control/sqlite-commander` is the durable Mission Control runtime for v1.
+`@mission-control/sqlite-commander` is a private, non-v1 SQLite runtime kept in this repository for experimentation and local comparison.
+
+The public v1 durable runtime is `@mission-control/postgres-commander`.
 
 It provides:
 

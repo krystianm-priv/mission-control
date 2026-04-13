@@ -112,6 +112,7 @@ The intended delivery model is source-first:
 - publish `.ts` source packages for Node.js `24+`
 - avoid dist/build artifacts in the public release path
 - keep runtime semantics inside Node.js with no bundler requirement
+- do not use `tsconfig` `compilerOptions.paths`/`baseUrl` to alias workspace packages; rely on workspace dependencies and package exports instead
 
 ### 4. Shared engine first
 

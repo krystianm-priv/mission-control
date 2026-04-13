@@ -15,7 +15,7 @@ import type {
 	SleepEventRecord,
 	StartNode,
 	StepNode,
-} from "./types.ts";
+} from "./types.d.ts";
 
 type ChainBuilder<E extends EventsMap> = {
 	step<EventName extends string, Output extends object>(

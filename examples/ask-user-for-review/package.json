@@ -11,6 +11,7 @@
 	},
 	"dependencies": {
 		"@mission-control/in-memory-commander": "*",
-		"@mission-control/core": "*"
+		"@mission-control/core": "*",
+		"zod": "^4.3.6"
 	}
 }

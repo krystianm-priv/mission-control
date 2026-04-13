@@ -1,4 +1,5 @@
 import { m } from "@mission-control/core";
+import { z } from "zod/v4";
 import {
 	createReviewRequestRecord,
 	fakeMailer,
@@ -6,28 +7,12 @@ import {
 	updateReviewRequestRecordWithReview,
 } from "./utils.ts";
 
-function parseEmailInput(input: unknown) {
-	const value = input as { email?: unknown };
-
-	if (typeof value.email !== "string" || !value.email.includes("@")) {
-		throw new Error("Invalid review email.");
-	}
-
-	return { email: value.email };
-}
-
-function parseReviewInput(input: unknown) {
-	if (typeof input !== "string" || input.length === 0) {
-		throw new Error("Invalid review payload.");
-	}
-
-	return input;
-}
-
 export const askForReviewMission = m
 	.define("ask-for-review")
 	.start({
-		input: { parse: parseEmailInput },
+		input: z.strictObject({
+			email: z.email(),
+		}),
 		run: async ({ ctx }) => {
 			return {
 				recordId: await createReviewRequestRecord(ctx.events.start.input.email),
@@ -40,7 +25,10 @@ export const askForReviewMission = m
 			content: `Please review the item with missionId: ${ctx.missionId}`,
 		});
 	})
-	.needTo("receive-review", { parse: parseReviewInput })
+	.needTo(
+		"receive-review",
+		z.string().min(1, "Review content cannot be empty."),
+	)
 	.step("anti-spam", async ({ ctx }) => {
 		return {
 			isSpam: await fakeSpamChecker(ctx.events["receive-review"].input),

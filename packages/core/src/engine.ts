@@ -5,7 +5,7 @@ import type {
 	SignalRecord,
 	StepAttemptRecord,
 	TimerRecord,
-} from "./contracts.ts";
+} from "./contracts.d.ts";
 import {
 	MissionAlreadyStartedError,
 	MissionExecutionError,
@@ -19,7 +19,7 @@ import type {
 	NeedToNode,
 	SleepNode,
 	StepNode,
-} from "./types.ts";
+} from "./types.d.ts";
 
 export interface EngineClock {
 	now(): Date;
@@ -582,7 +582,7 @@ export async function startRuntime(
 	}
 
 	try {
-		runtime.snapshot.ctx.events.start = {
+		runtime.snapshot.ctx.events["start"] = {
 			input: parseMissionInput("start", startNode.inputSchema, input),
 		};
 		appendHistory(runtime, {
@@ -590,7 +590,7 @@ export async function startRuntime(
 			at: runtime.clock.now().toISOString(),
 		});
 		await persistRuntime(runtime);
-		runtime.snapshot.ctx.events.start.output = await startNode.run({
+		runtime.snapshot.ctx.events["start"].output = await startNode.run({
 			ctx: runtime.snapshot.ctx,
 		});
 		runtime.snapshot.cursor = 1;

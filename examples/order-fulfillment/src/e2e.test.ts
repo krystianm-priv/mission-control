@@ -49,7 +49,7 @@ test("e2e: full happy path", async () => {
 
 	// sanity checks
 	assert.equal(
-		(state.snapshot.ctx.events.start?.input as { orderId: string }).orderId,
+		(state.snapshot.ctx.events["start"]?.input as { orderId: string }).orderId,
 		validInput.orderId,
 	);
 

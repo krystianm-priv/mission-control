@@ -1,14 +1,4 @@
 {
 	"extends": "../../tsconfig.base.json",
-	"compilerOptions": {
-		"noEmit": true,
-		"allowImportingTsExtensions": true,
-		"paths": {
-			"@mission-control/core": ["../../packages/core/src/index.ts"],
-			"@mission-control/postgres-commander": [
-				"../../packages/postgres-commander/src/index.ts"
-			]
-		}
-	},
 	"include": ["src/**/*.ts"]
 }

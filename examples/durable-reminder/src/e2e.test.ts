@@ -42,7 +42,8 @@ test("e2e: durable reminder happy path (mocked timers)", async (t) => {
 	const state = mission.inspect();
 
 	assert.equal(
-		(state.snapshot.ctx.events.start?.input as { recipient: string }).recipient,
+		(state.snapshot.ctx.events["start"]?.input as { recipient: string })
+			.recipient,
 		validInput.recipient,
 	);
 

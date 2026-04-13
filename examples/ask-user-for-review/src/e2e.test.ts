@@ -26,12 +26,13 @@ test("e2e: full happy path", async () => {
 
 	const state = mission.inspect();
 
-	assert.deepEqual(state.snapshot.ctx.events.start?.input, {
+	assert.deepEqual(state.snapshot.ctx.events["start"]?.input, {
 		email: validEmail,
 	});
-	assert.deepEqual(state.snapshot.ctx.events.start?.output, {
-		recordId: (state.snapshot.ctx.events.start?.output as { recordId: string })
-			?.recordId,
+	assert.deepEqual(state.snapshot.ctx.events["start"]?.output, {
+		recordId: (
+			state.snapshot.ctx.events["start"]?.output as { recordId: string }
+		)?.recordId,
 	});
 	assert.equal(
 		state.snapshot.ctx.events["receive-review"]?.input,
@@ -41,7 +42,7 @@ test("e2e: full happy path", async () => {
 		isSpam: false,
 	});
 
-	assert.ok(state.snapshot.ctx.events.start);
+	assert.ok(state.snapshot.ctx.events["start"]);
 	assert.ok(state.snapshot.ctx.events["receive-review"]);
 	assert.ok(state.snapshot.ctx.events["anti-spam"]);
 	assert.ok(state.snapshot.ctx.events["update-record"]);

@@ -44,8 +44,11 @@ test("in-memory commander runs successful start, wait, signal, and completion fl
 
 	const inspection = handle.inspect();
 	assert.equal(
-		(inspection.snapshot.ctx.events.archive?.output as { approvedBy: string })
-			.approvedBy,
+		(
+			inspection.snapshot.ctx.events["archive"]?.output as {
+				approvedBy: string;
+			}
+		).approvedBy,
 		"ops",
 	);
 	assert.equal(
@@ -273,7 +276,8 @@ test("inspection APIs expose history, signals, timers, and context accumulation"
 	assert.equal(inspection.timers.length, 1);
 	assert.equal(inspection.signals.length, 1);
 	assert.equal(
-		(inspection.snapshot.ctx.events.finish?.output as { value: string }).value,
+		(inspection.snapshot.ctx.events["finish"]?.output as { value: string })
+			.value,
 		"done",
 	);
 });
