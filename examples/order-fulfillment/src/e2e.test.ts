@@ -84,7 +84,7 @@ test("e2e: invalid start input fails", async () => {
 	assert.equal(mission.status, "failed");
 });
 
-test("e2e: invalid payment signal fails", async () => {
+test("e2e: invalid payment signal keeps the mission waiting", async () => {
 	const commander = new InMemoryCommander({
 		createMissionId: () => "order-3",
 		definitions: [orderFulfillmentMission],
@@ -100,11 +100,12 @@ test("e2e: invalid payment signal fails", async () => {
 				paymentId: "pay-1",
 				amount: -1, // invalid
 				currency: "USD",
-			} as never),
+		} as never),
 		MissionValidationError,
 	);
 
-	assert.equal(mission.status, "failed");
+	assert.equal(mission.status, "waiting");
+	assert.equal(mission.inspect().snapshot.waiting?.eventName, "confirm-payment");
 });
 
 test("e2e: wrong signal name fails", async () => {

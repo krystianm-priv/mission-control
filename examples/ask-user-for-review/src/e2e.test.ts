@@ -64,7 +64,7 @@ test("e2e: invalid start input fails fast", async () => {
 	assert.equal(mission.status, "failed");
 });
 
-test("e2e: invalid signal input fails", async () => {
+test("e2e: invalid signal input keeps the mission waiting", async () => {
 	const commander = new InMemoryCommander({
 		createMissionId: () => "mission-e2e-3",
 		definitions: [askForReviewMission],
@@ -79,7 +79,8 @@ test("e2e: invalid signal input fails", async () => {
 		MissionValidationError,
 	);
 
-	assert.equal(mission.status, "failed");
+	assert.equal(mission.status, "waiting");
+	assert.equal(mission.inspect().snapshot.waiting?.eventName, "receive-review");
 });
 
 test("e2e: spam review causes failure", async () => {
