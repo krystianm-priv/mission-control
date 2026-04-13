@@ -121,7 +121,7 @@ Acceptance criteria:
 ## Milestone 2 — Core boundary hardening
 
 ### MC-003 — Make the durable adapter contract explicit in core
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

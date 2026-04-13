@@ -57,7 +57,7 @@ Owns:
 - retry and timer primitives
 - the shared execution engine
 - commander abstractions
-- durable adapter-facing persistence contracts
+- durable adapter-facing persistence contracts and recovery contract helpers
 
 This package should remain runtime-neutral.
 

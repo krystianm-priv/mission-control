@@ -8,8 +8,8 @@
 - schema helpers: `Schema`, `AnyInputSchema`, `Infer`, `parseMissionInput`
 - retry helpers: `DEFAULT_RETRY_POLICY`, `normalizeRetryPolicy`, `getRetryDelayMs`
 - timer helpers: `NeedToOptions`, `WaitTimeoutDefinition`, `SleepResult`
-- commander contracts: `MissionSnapshot`, `MissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
-- configurable runtime APIs: `createCommander`, `ConfigurableCommander`, `CommanderPersistenceAdapter`
+- commander contracts: `MissionSnapshot`, `MissionInspection`, `WaitingMissionSnapshot`, `ScheduledMissionSnapshot`, `RecoverableMissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
+- configurable runtime APIs: `createCommander`, `ConfigurableCommander`, `CommanderPersistenceAdapter`, `isWaitingMissionSnapshot`, `isScheduledMissionSnapshot`, `isRecoverableMissionInspection`
 - runtime engine helpers: `createEngineRuntime`, `hydrateEngineRuntime`, `recoverRuntime`, `startRuntime`, `signalRuntime`, `runUntilWaitOrEnd`
 - abstract base class: `Commander`
 
@@ -20,15 +20,16 @@ If omitted, the commander uses an internal in-memory adapter.
 
 Third-party adapters should treat `MissionInspection` as the minimum durable unit.
 That snapshot includes mission state, history, attempts, signals, timers, and waiting metadata, which is the information required for restart-safe recovery.
+The exported predicate helpers can be used to narrow persisted rows into the exact waiting, scheduled, and recoverable shapes expected by the adapter contract.
 
 Expected semantics:
 
 - `bootstrap()` runs once during commander startup before recovery begins
 - `saveInspection(inspection)` persists the latest full mission inspection after runtime changes
 - `loadInspection(missionId)` returns one stored mission inspection or `undefined`
-- `listWaitingSnapshots()` returns waiting missions for inspection APIs
-- `listScheduledSnapshots()` returns only waiting timer/retry missions, ordered however the backend considers canonical
-- `listRecoverableInspections()` returns missions in `waiting` or `running` states that should be rehydrated on startup
+- `listWaitingSnapshots()` returns `WaitingMissionSnapshot[]` for inspection APIs
+- `listScheduledSnapshots()` returns `ScheduledMissionSnapshot[]` for waiting timer/retry missions, ordered however the backend considers canonical
+- `listRecoverableInspections()` returns `RecoverableMissionInspection[]` for missions in `waiting` or `running` states that should be rehydrated on startup
 - `close()` is optional synchronous cleanup for backend resources owned by the adapter
 
 The commander does not require a query builder, ORM, queue, or leasing protocol.
@@ -74,6 +75,9 @@ import {
 	type CommanderPersistenceAdapter,
 	createCommander,
 	type MissionInspection,
+	type RecoverableMissionInspection,
+	type ScheduledMissionSnapshot,
+	type WaitingMissionSnapshot,
 	m,
 } from "@mission-control/core";
 
@@ -84,19 +88,19 @@ class FileBackedAdapter implements CommanderPersistenceAdapter {
 		void inspection;
 	}
 
-	public loadInspection(): MissionInspection | undefined {
+	public loadInspection(_missionId: string): MissionInspection | undefined {
 		return undefined;
 	}
 
-	public listWaitingSnapshots() {
+	public listWaitingSnapshots(): WaitingMissionSnapshot[] {
 		return [];
 	}
 
-	public listScheduledSnapshots() {
+	public listScheduledSnapshots(): ScheduledMissionSnapshot[] {
 		return [];
 	}
 
-	public listRecoverableInspections() {
+	public listRecoverableInspections(): RecoverableMissionInspection[] {
 		return [];
 	}
 }

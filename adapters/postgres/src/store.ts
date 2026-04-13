@@ -1,7 +1,14 @@
 import type {
 	CommanderPersistenceAdapter,
 	MissionInspection,
-	MissionSnapshot,
+	RecoverableMissionInspection,
+	ScheduledMissionSnapshot,
+	WaitingMissionSnapshot,
+} from "@mission-control/core";
+import {
+	isRecoverableMissionInspection,
+	isScheduledMissionSnapshot,
+	isWaitingMissionSnapshot,
 } from "@mission-control/core";
 
 import { migration0001Init } from "./migrations/0001_init.ts";
@@ -99,37 +106,43 @@ export class PgStore implements CommanderPersistenceAdapter {
 		return row ? deserializeInspection(row) : undefined;
 	}
 
-	public async listWaitingSnapshots(): Promise<MissionSnapshot[]> {
+	public async listWaitingSnapshots(): Promise<WaitingMissionSnapshot[]> {
 		const rows = await executeRows(
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status = 'waiting' ORDER BY updated_at ASC",
 		);
-		return rows.map(
+		return rows
+			.map(
 			(row) =>
 				deserializeInspection(row as unknown as SerializedInspectionRow)
 					.snapshot,
-		);
+			)
+			.filter(isWaitingMissionSnapshot);
 	}
 
-	public async listScheduledSnapshots(): Promise<MissionSnapshot[]> {
+	public async listScheduledSnapshots(): Promise<ScheduledMissionSnapshot[]> {
 		const rows = await executeRows(
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') ORDER BY timer_due_at ASC",
 		);
-		return rows.map(
+		return rows
+			.map(
 			(row) =>
 				deserializeInspection(row as unknown as SerializedInspectionRow)
 					.snapshot,
-		);
+			)
+			.filter(isScheduledMissionSnapshot);
 	}
 
-	public async listRecoverableInspections(): Promise<MissionInspection[]> {
+	public async listRecoverableInspections(): Promise<RecoverableMissionInspection[]> {
 		const rows = await executeRows(
 			this.execute,
 			"SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
 		);
-		return rows.map((row) =>
-			deserializeInspection(row as unknown as SerializedInspectionRow),
-		);
+		return rows
+			.map((row) =>
+				deserializeInspection(row as unknown as SerializedInspectionRow),
+			)
+			.filter(isRecoverableMissionInspection);
 	}
 }

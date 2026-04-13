@@ -92,6 +92,29 @@ export interface MissionInspection {
 	timers: TimerRecord[];
 }
 
+export type RecoverableMissionStatus = Extract<MissionStatus, "waiting" | "running">;
+export type ScheduledMissionWaitKind = Extract<
+	MissionWaitingState["kind"],
+	"timer" | "retry"
+>;
+
+export interface WaitingMissionSnapshot extends MissionSnapshot {
+	status: "waiting";
+	waiting: MissionWaitingState;
+}
+
+export interface ScheduledMissionSnapshot extends WaitingMissionSnapshot {
+	waiting: MissionWaitingState & {
+		kind: ScheduledMissionWaitKind;
+	};
+}
+
+export interface RecoverableMissionInspection extends MissionInspection {
+	snapshot: MissionSnapshot & {
+		status: RecoverableMissionStatus;
+	};
+}
+
 export interface CommanderCreateOptions {
 	missionId?: string;
 }

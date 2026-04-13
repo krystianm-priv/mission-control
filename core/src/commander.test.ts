@@ -4,6 +4,10 @@ import {
 	type CommanderPersistenceAdapter,
 	createCommander,
 	type MissionInspection,
+	type RecoverableMissionInspection,
+	isRecoverableMissionInspection,
+	isScheduledMissionSnapshot,
+	isWaitingMissionSnapshot,
 	m,
 } from "./index.ts";
 
@@ -24,28 +28,20 @@ class MemoryPersistenceAdapter implements CommanderPersistenceAdapter {
 
 	public listWaitingSnapshots() {
 		return [...this.inspections.values()]
-			.filter((inspection) => inspection.snapshot.status === "waiting")
-			.map((inspection) => structuredClone(inspection.snapshot));
+			.map((inspection) => structuredClone(inspection.snapshot))
+			.filter(isWaitingMissionSnapshot);
 	}
 
 	public listScheduledSnapshots() {
 		return [...this.inspections.values()]
-			.filter(
-				(inspection) =>
-					inspection.snapshot.waiting?.kind !== undefined &&
-					inspection.snapshot.waiting.kind !== "signal",
-			)
-			.map((inspection) => structuredClone(inspection.snapshot));
+			.map((inspection) => structuredClone(inspection.snapshot))
+			.filter(isScheduledMissionSnapshot);
 	}
 
 	public listRecoverableInspections() {
 		return [...this.inspections.values()]
-			.filter(
-				(inspection) =>
-					inspection.snapshot.status === "waiting" ||
-					inspection.snapshot.status === "running",
-			)
-			.map((inspection) => structuredClone(inspection));
+			.map((inspection) => structuredClone(inspection))
+			.filter(isRecoverableMissionInspection);
 	}
 }
 
@@ -62,7 +58,7 @@ test("createCommander bootstraps persistence before recovery and closes the adap
 		})
 		.end();
 
-	const persistedInspection: MissionInspection = {
+	const persistedInspection: RecoverableMissionInspection = {
 		snapshot: {
 			missionId: "mission-recoverable",
 			missionName: "recover",
@@ -204,6 +200,49 @@ test("createCommander defaults to in-memory execution", async () => {
 
 	await handle.signal("approve", { approvedBy: "ops" });
 	assert.equal(handle.status, "completed");
+});
+
+test("persistence contract helpers classify waiting, scheduled, and recoverable state", () => {
+	const waitingInspection: MissionInspection = {
+		snapshot: {
+			missionId: "mission-waiting",
+			missionName: "demo",
+			status: "waiting",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "mission-waiting",
+				events: {},
+			},
+			waiting: {
+				kind: "retry",
+				eventName: "step:archive",
+				nodeIndex: 1,
+				timerDueAt: new Date(0).toISOString(),
+			},
+		},
+		history: [],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	};
+
+	const completedInspection: MissionInspection = {
+		...waitingInspection,
+		snapshot: {
+			...waitingInspection.snapshot,
+			missionId: "mission-completed",
+			status: "completed",
+			waiting: undefined,
+		},
+	};
+
+	assert.equal(isWaitingMissionSnapshot(waitingInspection.snapshot), true);
+	assert.equal(isScheduledMissionSnapshot(waitingInspection.snapshot), true);
+	assert.equal(isRecoverableMissionInspection(waitingInspection), true);
+	assert.equal(isWaitingMissionSnapshot(completedInspection.snapshot), false);
+	assert.equal(isScheduledMissionSnapshot(completedInspection.snapshot), false);
+	assert.equal(isRecoverableMissionInspection(completedInspection), false);
 });
 
 test("createCommander resumes missions through a custom persistence adapter", async () => {

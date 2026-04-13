@@ -3,6 +3,9 @@ import type {
 	MissionHandle,
 	MissionInspection,
 	MissionSnapshot,
+	RecoverableMissionInspection,
+	ScheduledMissionSnapshot,
+	WaitingMissionSnapshot,
 } from "./contracts.d.ts";
 import {
 	createEngineRuntime,
@@ -25,16 +28,39 @@ export interface CommanderOptions {
 }
 
 export interface CommanderPersistenceAdapter {
+	/**
+	 * Optional startup hook used to prepare backend state before recovery begins.
+	 */
 	bootstrap?(): Promise<void> | void;
+	/**
+	 * Persist the latest full mission inspection after runtime state changes.
+	 */
 	saveInspection(inspection: MissionInspection): Promise<void> | void;
+	/**
+	 * Load the full persisted inspection for one mission identifier.
+	 */
 	loadInspection(
 		missionId: string,
 	): Promise<MissionInspection | undefined> | MissionInspection | undefined;
-	listWaitingSnapshots(): Promise<MissionSnapshot[]> | MissionSnapshot[];
-	listScheduledSnapshots(): Promise<MissionSnapshot[]> | MissionSnapshot[];
+	/**
+	 * List waiting missions for inspection APIs. Returned snapshots must include
+	 * explicit waiting metadata.
+	 */
+	listWaitingSnapshots():
+		| Promise<WaitingMissionSnapshot[]>
+		| WaitingMissionSnapshot[];
+	/**
+	 * List the subset of waiting missions blocked on a timer or retry backoff.
+	 */
+	listScheduledSnapshots():
+		| Promise<ScheduledMissionSnapshot[]>
+		| ScheduledMissionSnapshot[];
+	/**
+	 * List persisted inspections that should be rehydrated during startup.
+	 */
 	listRecoverableInspections():
-		| Promise<MissionInspection[]>
-		| MissionInspection[];
+		| Promise<RecoverableMissionInspection[]>
+		| RecoverableMissionInspection[];
 	close?(): void;
 }
 
@@ -48,6 +74,29 @@ export function createDefaultMissionId(): string {
 	}
 
 	return `mission-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+}
+
+export function isWaitingMissionSnapshot(
+	snapshot: MissionSnapshot,
+): snapshot is WaitingMissionSnapshot {
+	return snapshot.status === "waiting" && snapshot.waiting !== undefined;
+}
+
+export function isScheduledMissionSnapshot(
+	snapshot: MissionSnapshot,
+): snapshot is ScheduledMissionSnapshot {
+	return (
+		isWaitingMissionSnapshot(snapshot) && snapshot.waiting.kind !== "signal"
+	);
+}
+
+export function isRecoverableMissionInspection(
+	inspection: MissionInspection,
+): inspection is RecoverableMissionInspection {
+	return (
+		inspection.snapshot.status === "waiting" ||
+		inspection.snapshot.status === "running"
+	);
 }
 
 export abstract class Commander {
@@ -126,30 +175,22 @@ class InMemoryPersistenceAdapter implements CommanderPersistenceAdapter {
 		return inspection ? cloneInspection(inspection) : undefined;
 	}
 
-	public listWaitingSnapshots(): MissionSnapshot[] {
+	public listWaitingSnapshots(): WaitingMissionSnapshot[] {
 		return [...this.inspections.values()]
-			.filter((inspection) => inspection.snapshot.status === "waiting")
-			.map((inspection) => structuredClone(inspection.snapshot));
+			.map((inspection) => structuredClone(inspection.snapshot))
+			.filter(isWaitingMissionSnapshot);
 	}
 
-	public listScheduledSnapshots(): MissionSnapshot[] {
+	public listScheduledSnapshots(): ScheduledMissionSnapshot[] {
 		return [...this.inspections.values()]
-			.filter(
-				(inspection) =>
-					inspection.snapshot.waiting?.kind !== undefined &&
-					inspection.snapshot.waiting.kind !== "signal",
-			)
-			.map((inspection) => structuredClone(inspection.snapshot));
+			.map((inspection) => structuredClone(inspection.snapshot))
+			.filter(isScheduledMissionSnapshot);
 	}
 
-	public listRecoverableInspections(): MissionInspection[] {
+	public listRecoverableInspections(): RecoverableMissionInspection[] {
 		return [...this.inspections.values()]
-			.filter(
-				(inspection) =>
-					inspection.snapshot.status === "waiting" ||
-					inspection.snapshot.status === "running",
-			)
-			.map((inspection) => cloneInspection(inspection));
+			.map((inspection) => cloneInspection(inspection))
+			.filter(isRecoverableMissionInspection);
 	}
 }
 
@@ -305,7 +346,7 @@ export class ConfigurableCommander extends Commander {
 	}
 
 	private recoverPersistedInspections(
-		inspections: MissionInspection[],
+		inspections: RecoverableMissionInspection[],
 	): Promise<void> | void {
 		let recovery: Promise<void> | undefined;
 		for (const inspection of inspections) {

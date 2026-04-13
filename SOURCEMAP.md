@@ -58,7 +58,7 @@ Typical files of interest:
 - contracts and types
 - retry / timer helpers
 - commander abstractions
-- adapter contract types
+- adapter contract types and persistence contract helpers
 
 ## `adapters/in-memory`
 

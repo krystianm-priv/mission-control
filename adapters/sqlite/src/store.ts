@@ -1,4 +1,14 @@
-import type { MissionInspection, MissionSnapshot } from "@mission-control/core";
+import type {
+	MissionInspection,
+	RecoverableMissionInspection,
+	ScheduledMissionSnapshot,
+	WaitingMissionSnapshot,
+} from "@mission-control/core";
+import {
+	isRecoverableMissionInspection,
+	isScheduledMissionSnapshot,
+	isWaitingMissionSnapshot,
+} from "@mission-control/core";
 
 import { migration0001Init } from "./migrations/0001_init.ts";
 import {
@@ -95,33 +105,39 @@ export class SQLiteStore {
 		return row ? deserializeInspection(row) : undefined;
 	}
 
-	public listWaitingSnapshots(): MissionSnapshot[] {
+	public listWaitingSnapshots(): WaitingMissionSnapshot[] {
 		return (
 			this.db
 				.prepare(
 					"SELECT * FROM mc_missions WHERE status = 'waiting' ORDER BY updated_at ASC",
 				)
 				.all() as unknown as SerializedInspectionRow[]
-		).map((row) => deserializeInspection(row).snapshot);
+		)
+			.map((row) => deserializeInspection(row).snapshot)
+			.filter(isWaitingMissionSnapshot);
 	}
 
-	public listScheduledSnapshots(): MissionSnapshot[] {
+	public listScheduledSnapshots(): ScheduledMissionSnapshot[] {
 		return (
 			this.db
 				.prepare(
 					"SELECT * FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') ORDER BY timer_due_at ASC",
 				)
 				.all() as unknown as SerializedInspectionRow[]
-		).map((row) => deserializeInspection(row).snapshot);
+		)
+			.map((row) => deserializeInspection(row).snapshot)
+			.filter(isScheduledMissionSnapshot);
 	}
 
-	public listRecoverableInspections(): MissionInspection[] {
+	public listRecoverableInspections(): RecoverableMissionInspection[] {
 		return (
 			this.db
 				.prepare(
 					"SELECT * FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
 				)
 				.all() as unknown as SerializedInspectionRow[]
-		).map((row) => deserializeInspection(row));
+		)
+			.map((row) => deserializeInspection(row))
+			.filter(isRecoverableMissionInspection);
 	}
 }
