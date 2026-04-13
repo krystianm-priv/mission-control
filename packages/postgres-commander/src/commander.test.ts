@@ -248,3 +248,30 @@ test("PgCommander resumes retry backoff after reload", async () => {
 		await harness.cleanup();
 	}
 });
+
+test("PgCommander rejects createMission after close", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
+
+	try {
+		const mission = m
+			.define("closed")
+			.start({
+				input: { parse: (input: unknown) => input as { id: string } },
+				run: async () => ({ ok: true }),
+			})
+			.end();
+
+		const commander = new PgCommander({
+			execute: await harness.createExecute(),
+			definitions: [mission],
+		});
+		commander.close();
+
+		assert.throws(() => commander.createMission(mission), /error:|closed/i);
+	} finally {
+		await harness.cleanup();
+	}
+});

@@ -9,7 +9,7 @@
 	"engineStrict": true,
 	"scripts": {
 		"format": "biome check --write --unsafe",
-		"check-types": "tsc --noEmit --skipLibCheck",
+		"check-types": "tsc",
 		"test": "node --test",
 		"test:watch": "node --test --watch",
 		"release:check": "npm run check-types && npm run lint && npm run test && npm run release:pack",

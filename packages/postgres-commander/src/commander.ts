@@ -46,6 +46,9 @@ export class PgCommander extends Commander {
 		definition: M,
 		options: CommanderCreateOptions = {},
 	): MissionHandle<M> {
+		if (this.closed) {
+			throw new Error("This PgCommander instance has been closed.");
+		}
 		this.registerMission(definition);
 		const missionId = options.missionId ?? this.createMissionId();
 		const runtime = this.createPersistedRuntime(definition, missionId);

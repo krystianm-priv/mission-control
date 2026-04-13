@@ -142,6 +142,15 @@ When public APIs or semantics change, update:
 - root `README.md` if user-facing behavior changed
 - `SOURCEMAP.md` if the repo structure changed materially
 
+### 9. Keep tooling minimal
+
+Prefer plain built-in commands over wrapper scripts.
+
+For tests:
+
+- the root `package.json` should orchestrate test scripts
+- do not add custom test runners or helper scripts unless the roadmap explicitly requires them
+
 ## Definition of done
 
 A task is done only when all of the following are true:

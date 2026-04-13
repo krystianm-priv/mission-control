@@ -17,11 +17,6 @@
 		"!src/**/*.test.ts",
 		"README.md"
 	],
-	"scripts": {
-		"check-types": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"test": "sh -c 'node --experimental-strip-types --test $(find src -name \"*.test.ts\" -print)'"
-	},
 	"dependencies": {
 		"@mission-control/core": "*"
 	}

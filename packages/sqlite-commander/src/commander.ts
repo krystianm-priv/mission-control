@@ -25,6 +25,7 @@ export interface SQLiteCommanderOptions extends CommanderOptions {
 export class SQLiteCommander extends Commander {
 	private readonly store: SQLiteStore;
 	private readonly runtimes = new Map<string, EngineRuntime>();
+	private closed = false;
 
 	public constructor(options: SQLiteCommanderOptions) {
 		super(options);
@@ -33,6 +34,7 @@ export class SQLiteCommander extends Commander {
 	}
 
 	public close(): void {
+		this.closed = true;
 		for (const runtime of this.runtimes.values()) {
 			runtime.scheduledToken = Symbol("sqlite-commander-closed");
 			runtime.persist = undefined;
@@ -44,6 +46,7 @@ export class SQLiteCommander extends Commander {
 		definition: M,
 		options: CommanderCreateOptions = {},
 	): MissionHandle<M> {
+		this.ensureOpen();
 		this.registerMission(definition);
 		const missionId = options.missionId ?? this.createMissionId();
 		const runtime = this.createPersistedRuntime(definition, missionId);
@@ -55,6 +58,7 @@ export class SQLiteCommander extends Commander {
 	public override async getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<MissionHandle<M> | undefined> {
+		this.ensureOpen();
 		const existing = this.runtimes.get(missionId);
 		if (existing) {
 			return this.createHandle(existing as EngineRuntime);
@@ -81,15 +85,24 @@ export class SQLiteCommander extends Commander {
 	public override async loadMission(
 		missionId: string,
 	): Promise<MissionInspection | undefined> {
+		this.ensureOpen();
 		return this.store.loadInspection(missionId);
 	}
 
 	public override async listWaiting(): Promise<MissionSnapshot[]> {
+		this.ensureOpen();
 		return this.store.listWaitingSnapshots();
 	}
 
 	public override async listScheduled(): Promise<MissionSnapshot[]> {
+		this.ensureOpen();
 		return this.store.listScheduledSnapshots();
+	}
+
+	private ensureOpen(): void {
+		if (this.closed) {
+			throw new Error("This SQLiteCommander instance has been closed.");
+		}
 	}
 
 	private recoverPersistedRuntimes(): void {
@@ -147,14 +160,19 @@ export class SQLiteCommander extends Commander {
 				return runtime.snapshot.ctx;
 			},
 			start: async (input) => {
+				this.ensureOpen();
 				await startRuntime(runtime, input);
 			},
 			signal: async (eventName, input) => {
+				this.ensureOpen();
 				await signalRuntime(runtime, eventName, input);
 			},
 			inspect: () => inspectRuntime(runtime),
 			getHistory: () => inspectRuntime(runtime).history,
-			waitForCompletion: () => waitForCompletion(runtime),
+			waitForCompletion: async () => {
+				this.ensureOpen();
+				return waitForCompletion(runtime);
+			},
 		};
 	}
 }

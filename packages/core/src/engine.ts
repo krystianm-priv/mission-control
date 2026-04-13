@@ -162,36 +162,41 @@ async function scheduleStoredWakeup(
 	runtime.scheduledToken = token;
 
 	void runtime.clock.sleep(delayMs).then(async () => {
-		if (runtime.scheduledToken !== token) {
-			return;
-		}
+		try {
+			if (runtime.scheduledToken !== token) {
+				return;
+			}
 
-		const timer = getLatestScheduledTimer(
-			runtime,
-			args.eventName,
-			args.kind === "retry" ? "retry" : "sleep",
-		);
-		if (timer) {
-			timer.status = "completed";
-			timer.resumedAt = runtime.clock.now().toISOString();
+			const timer = getLatestScheduledTimer(
+				runtime,
+				args.eventName,
+				args.kind === "retry" ? "retry" : "sleep",
+			);
+			if (timer) {
+				timer.status = "completed";
+				timer.resumedAt = runtime.clock.now().toISOString();
+			}
+			if (args.kind === "timer") {
+				runtime.snapshot.ctx.events[args.eventName] = {
+					output: {
+						scheduledAt:
+							timer?.scheduledAt ?? runtime.clock.now().toISOString(),
+						dueAt: timer?.dueAt ?? args.dueAt,
+						resumedAt: timer?.resumedAt ?? runtime.clock.now().toISOString(),
+					},
+				};
+			}
+			appendHistory(runtime, {
+				type: "timer-fired",
+				at: timer?.resumedAt ?? runtime.clock.now().toISOString(),
+				eventName: args.eventName,
+			});
+			runtime.snapshot.waiting = undefined;
+			await persistRuntime(runtime);
+			await args.onWake();
+		} catch (error) {
+			await setFailure(runtime, error);
 		}
-		if (args.kind === "timer") {
-			runtime.snapshot.ctx.events[args.eventName] = {
-				output: {
-					scheduledAt: timer?.scheduledAt ?? runtime.clock.now().toISOString(),
-					dueAt: timer?.dueAt ?? args.dueAt,
-					resumedAt: timer?.resumedAt ?? runtime.clock.now().toISOString(),
-				},
-			};
-		}
-		appendHistory(runtime, {
-			type: "timer-fired",
-			at: timer?.resumedAt ?? runtime.clock.now().toISOString(),
-			eventName: args.eventName,
-		});
-		runtime.snapshot.waiting = undefined;
-		await persistRuntime(runtime);
-		await args.onWake();
 	});
 }
 
@@ -293,19 +298,22 @@ async function scheduleRetryWait(
 async function scheduleNeedToTimeout(
 	runtime: EngineRuntime,
 	node: NeedToNode,
+	dueAt?: string,
 ): Promise<void> {
 	if (!node.timeout || node.timeout.action !== "fail") {
 		return;
 	}
 
-	const dueAt = new Date(
-		runtime.clock.now().getTime() + node.timeout.afterMs,
-	).toISOString();
+	const effectiveDueAt =
+		dueAt ??
+		new Date(
+			runtime.clock.now().getTime() + node.timeout.afterMs,
+		).toISOString();
 	runtime.snapshot.waiting = {
 		kind: "signal",
 		eventName: node.name,
 		nodeIndex: runtime.snapshot.cursor,
-		timeoutAt: dueAt,
+		timeoutAt: effectiveDueAt,
 	};
 	await persistRuntime(runtime);
 
@@ -313,7 +321,10 @@ async function scheduleNeedToTimeout(
 	runtime.scheduledToken = token;
 	void runtime.clock
 		.sleep(
-			Math.max(0, new Date(dueAt).getTime() - runtime.clock.now().getTime()),
+			Math.max(
+				0,
+				new Date(effectiveDueAt).getTime() - runtime.clock.now().getTime(),
+			),
 		)
 		.then(async () => {
 			if (runtime.scheduledToken !== token) {
@@ -507,6 +518,14 @@ export function hydrateEngineRuntime(
 export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 	const waiting = runtime.snapshot.waiting;
 	if (!waiting) {
+		if (runtime.snapshot.status === "running") {
+			try {
+				await runUntilWaitOrEnd(runtime);
+			} catch (error) {
+				await setFailure(runtime, error);
+			}
+			return;
+		}
 		settleCompletion(runtime);
 		return;
 	}
@@ -520,7 +539,7 @@ export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 		if (!node || node.kind !== "needTo") {
 			throw new MissionExecutionError("Mission waiting state is out of sync.");
 		}
-		await scheduleNeedToTimeout(runtime, node);
+		await scheduleNeedToTimeout(runtime, node, timeoutAt);
 		return;
 	}
 
@@ -631,12 +650,12 @@ export async function signalRuntime(
 		throw new MissionExecutionError("Mission waiting state is out of sync.");
 	}
 
-	const token = Symbol(eventName);
-	runtime.activeSignalToken = token;
-	runtime.scheduledToken = undefined;
+	const parsedInput = parseMissionInput(eventName, node.inputSchema, input);
 
 	try {
-		const parsedInput = parseMissionInput(eventName, node.inputSchema, input);
+		const token = Symbol(eventName);
+		runtime.activeSignalToken = token;
+		runtime.scheduledToken = undefined;
 		runtime.snapshot.ctx.events[eventName] = { input: parsedInput };
 		runtime.snapshot.waiting = undefined;
 		runtime.signals.push({
@@ -656,9 +675,7 @@ export async function signalRuntime(
 		await setFailure(runtime, error);
 		throw error;
 	} finally {
-		if (runtime.activeSignalToken === token) {
-			runtime.activeSignalToken = undefined;
-		}
+		runtime.activeSignalToken = undefined;
 	}
 }
 

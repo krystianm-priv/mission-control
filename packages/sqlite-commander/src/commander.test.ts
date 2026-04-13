@@ -179,3 +179,27 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 		rmSync(temp.dir, { recursive: true, force: true });
 	}
 });
+
+test("SQLiteCommander rejects public methods after close", async () => {
+	const temp = createTempDbPath();
+	try {
+		const mission = m
+			.define("closed")
+			.start({
+				input: { parse: (input) => input as { id: string } },
+				run: async () => ({ ok: true }),
+			})
+			.end();
+
+		const commander = new SQLiteCommander({
+			databasePath: temp.path,
+			definitions: [mission],
+		});
+		commander.close();
+
+		assert.throws(() => commander.createMission(mission), /error:|closed/i);
+		await assert.rejects(() => commander.listWaiting(), /error:|closed/i);
+	} finally {
+		rmSync(temp.dir, { recursive: true, force: true });
+	}
+});

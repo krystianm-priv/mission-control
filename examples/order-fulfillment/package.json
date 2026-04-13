@@ -3,12 +3,6 @@
 	"version": "1.0.0-rc.1",
 	"private": true,
 	"type": "module",
-	"scripts": {
-		"check-types": "tsc -p tsconfig.json --noEmit",
-		"lint": "biome check .",
-		"test": "sh -c 'node --experimental-strip-types --test $(find src -name \"*.test.ts\" -print)'",
-		"dev": "node --experimental-strip-types --watch src/index.ts"
-	},
 	"dependencies": {
 		"@mission-control/in-memory-commander": "*",
 		"@mission-control/core": "*"
