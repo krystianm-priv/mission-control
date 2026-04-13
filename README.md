@@ -95,9 +95,10 @@ For v1, the minimum supported contract is:
 - `loadInspection(missionId)` to load one mission by id
 - `listWaitingSnapshots()` and `listScheduledSnapshots()` for inspection APIs
 - `listRecoverableInspections()` for startup rehydration
-- optional `close()` cleanup
+- optional synchronous `close()` cleanup
 
 The built-in Postgres package is one implementation of that contract, and the default behavior with no adapter remains in-memory.
+If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before direct `createMission(...)` calls.
 
 ## Quick start
 

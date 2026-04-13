@@ -29,10 +29,11 @@ Expected semantics:
 - `listWaitingSnapshots()` returns waiting missions for inspection APIs
 - `listScheduledSnapshots()` returns only waiting timer/retry missions, ordered however the backend considers canonical
 - `listRecoverableInspections()` returns missions in `waiting` or `running` states that should be rehydrated on startup
-- `close()` is optional cleanup for backend resources owned by the adapter
+- `close()` is optional synchronous cleanup for backend resources owned by the adapter
 
 The commander does not require a query builder, ORM, queue, or leasing protocol.
 For v1, adapters are expected to support single-process recovery semantics that match the existing in-memory and Postgres runtimes.
+If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before calling `createMission(...)` directly.
 
 ## Example
 

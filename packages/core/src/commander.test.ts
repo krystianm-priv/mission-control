@@ -140,6 +140,40 @@ test("createCommander bootstraps persistence before recovery and closes the adap
 	assert.equal(events.at(-1), "close");
 });
 
+test("createCommander waits for async initialization before start", async () => {
+	let releaseBootstrap!: () => void;
+	const bootstrapReady = new Promise<void>((resolve) => {
+		releaseBootstrap = resolve;
+	});
+	const mission = m
+		.define("delayed-start")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.end();
+
+	const commander = createCommander({
+		definitions: [mission],
+		persistence: {
+			bootstrap: () => bootstrapReady,
+			saveInspection: () => {},
+			loadInspection: () => undefined,
+			listWaitingSnapshots: () => [],
+			listScheduledSnapshots: () => [],
+			listRecoverableInspections: () => [],
+		},
+	});
+
+	assert.throws(() => commander.createMission(mission), /still initializing/i);
+
+	const startPromise = commander.start(mission, { id: "123" });
+	releaseBootstrap();
+
+	const handle = await startPromise;
+	assert.equal(handle.status, "completed");
+});
+
 test("createCommander defaults to in-memory execution", async () => {
 	const mission = m
 		.define("approval")
@@ -206,4 +240,37 @@ test("createCommander resumes missions through a custom persistence adapter", as
 	await loaded.signal("continue", { approved: true });
 	await loaded.waitForCompletion();
 	assert.equal(loaded.inspect().snapshot.status, "completed");
+});
+
+test("waitUntilReady allows createMission after async initialization", async () => {
+	let releaseBootstrap!: () => void;
+	const bootstrapReady = new Promise<void>((resolve) => {
+		releaseBootstrap = resolve;
+	});
+	const mission = m
+		.define("manual-create")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.end();
+
+	const commander = createCommander({
+		definitions: [mission],
+		persistence: {
+			bootstrap: () => bootstrapReady,
+			saveInspection: () => {},
+			loadInspection: () => undefined,
+			listWaitingSnapshots: () => [],
+			listScheduledSnapshots: () => [],
+			listRecoverableInspections: () => [],
+		},
+	});
+
+	releaseBootstrap();
+	await commander.waitUntilReady();
+
+	const handle = commander.createMission(mission);
+	await handle.start({ id: "123" });
+	assert.equal(handle.status, "completed");
 });

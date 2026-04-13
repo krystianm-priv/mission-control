@@ -35,7 +35,7 @@ export interface CommanderPersistenceAdapter {
 	listRecoverableInspections():
 		| Promise<MissionInspection[]>
 		| MissionInspection[];
-	close?(): Promise<void> | void;
+	close?(): void;
 }
 
 export interface CreateCommanderOptions extends CommanderOptions {
@@ -157,6 +157,7 @@ export class ConfigurableCommander extends Commander {
 	private readonly persistence: CommanderPersistenceAdapter;
 	private readonly runtimes = new Map<string, EngineRuntime>();
 	private readonly ready: Promise<void>;
+	private initialized = false;
 	private closed = false;
 
 	public constructor(options: CreateCommanderOptions = {}) {
@@ -171,7 +172,15 @@ export class ConfigurableCommander extends Commander {
 		}
 		super(baseOptions);
 		this.persistence = options.persistence ?? new InMemoryPersistenceAdapter();
-		this.ready = this.initialize();
+		const initialization = this.initialize();
+		if (isPromiseLike(initialization)) {
+			this.ready = initialization.then(() => {
+				this.initialized = true;
+			});
+		} else {
+			this.initialized = true;
+			this.ready = Promise.resolve();
+		}
 	}
 
 	public close(): void {
@@ -190,6 +199,11 @@ export class ConfigurableCommander extends Commander {
 		if (this.closed) {
 			throw new Error("This commander instance has been closed.");
 		}
+		if (!this.initialized) {
+			throw new Error(
+				"This commander is still initializing. Await waitUntilReady() before calling createMission().",
+			);
+		}
 		this.registerMission(definition);
 		const missionId = options.missionId ?? this.createMissionId();
 		const runtime = this.createPersistedRuntime(definition, missionId);
@@ -202,6 +216,7 @@ export class ConfigurableCommander extends Commander {
 		input: M["context"]["events"]["start"]["input"],
 		options: CommanderCreateOptions = {},
 	): Promise<MissionHandle<M>> {
+		await this.ensureReady();
 		const definition =
 			typeof definitionOrName === "string"
 				? (this.getRequiredMission(definitionOrName) as M)
@@ -209,6 +224,10 @@ export class ConfigurableCommander extends Commander {
 		const handle = this.createMission(definition, options);
 		await handle.start(input);
 		return handle;
+	}
+
+	public async waitUntilReady(): Promise<void> {
+		await this.ensureReady();
 	}
 
 	public override async getMission<M extends MissionDefinition>(
@@ -260,9 +279,12 @@ export class ConfigurableCommander extends Commander {
 		return this.persistence.listScheduledSnapshots();
 	}
 
-	private async initialize(): Promise<void> {
-		await this.persistence.bootstrap?.();
-		await this.recoverPersistedRuntimes();
+	private initialize(): Promise<void> | void {
+		const bootstrap = this.persistence.bootstrap?.();
+		if (isPromiseLike(bootstrap)) {
+			return bootstrap.then(() => this.recoverPersistedRuntimes());
+		}
+		return this.recoverPersistedRuntimes();
 	}
 
 	private async ensureReady(): Promise<void> {
@@ -272,8 +294,21 @@ export class ConfigurableCommander extends Commander {
 		}
 	}
 
-	private async recoverPersistedRuntimes(): Promise<void> {
-		for (const inspection of await this.persistence.listRecoverableInspections()) {
+	private recoverPersistedRuntimes(): Promise<void> | void {
+		const inspections = this.persistence.listRecoverableInspections();
+		if (isPromiseLike(inspections)) {
+			return inspections.then((resolved) =>
+				this.recoverPersistedInspections(resolved),
+			);
+		}
+		return this.recoverPersistedInspections(inspections);
+	}
+
+	private recoverPersistedInspections(
+		inspections: MissionInspection[],
+	): Promise<void> | void {
+		let recovery: Promise<void> | undefined;
+		for (const inspection of inspections) {
 			const definition = this.getRegisteredMission(
 				inspection.snapshot.missionName,
 			);
@@ -282,8 +317,16 @@ export class ConfigurableCommander extends Commander {
 			}
 			const runtime = this.hydratePersistedRuntime(definition, inspection);
 			this.runtimes.set(inspection.snapshot.missionId, runtime);
-			await recoverRuntime(runtime);
+			if (recovery) {
+				recovery = recovery.then(() => recoverRuntime(runtime));
+				continue;
+			}
+			const pendingRecovery = recoverRuntime(runtime);
+			recovery = isPromiseLike(pendingRecovery)
+				? pendingRecovery
+				: Promise.resolve();
 		}
+		return recovery;
 	}
 
 	private createPersistedRuntime(
@@ -352,4 +395,15 @@ export function createCommander(
 	options: CreateCommanderOptions = {},
 ): ConfigurableCommander {
 	return new ConfigurableCommander(options);
+}
+
+function isPromiseLike<T>(
+	value: Promise<T> | PromiseLike<T> | T | undefined,
+): value is Promise<T> | PromiseLike<T> {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"then" in value &&
+		typeof value.then === "function"
+	);
 }
