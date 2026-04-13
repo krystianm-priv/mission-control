@@ -2,7 +2,7 @@ import { createCommander } from "@mission-control/core";
 import {
 	createPgPersistenceAdapter,
 	type PgCommanderExecute,
-} from "@mission-control/postgres-commander";
+} from "@mission-control/adapter-postgres";
 
 import { durableReminderMission } from "./mission-definition.ts";
 

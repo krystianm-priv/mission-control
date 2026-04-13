@@ -1,9 +1,8 @@
-# @mission-control/sqlite-commander
+# @mission-control/adapter-sqlite
 
-`@mission-control/sqlite-commander` is the current SQLite-backed durable runtime package in this pre-v1 repository.
+`@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package in this pre-v1 repository.
 
 It remains experimental, and the roadmap has not yet chosen a single reference v1 durable adapter.
-The long-term package direction is still adapter-shaped under `adapters/*`, so this package should be treated as transitional.
 
 It provides:
 
@@ -25,7 +24,7 @@ node --experimental-sqlite ...
 ```ts
 import { join } from "node:path";
 
-import { SQLiteCommander } from "@mission-control/sqlite-commander";
+import { SQLiteCommander } from "@mission-control/adapter-sqlite";
 import { reminderMission } from "./reminder-mission.ts";
 
 const commander = new SQLiteCommander({

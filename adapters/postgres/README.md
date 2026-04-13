@@ -1,9 +1,8 @@
-# @mission-control/postgres-commander
+# @mission-control/adapter-postgres
 
-`@mission-control/postgres-commander` is the current Postgres-backed durable runtime package in this pre-v1 repository.
+`@mission-control/adapter-postgres` is the Postgres-backed durable adapter package in this pre-v1 repository.
 
 It is part of the durable adapter work, but the roadmap has not yet declared a single reference v1 backend.
-The long-term package direction is still adapter-shaped under `adapters/*`, so this package should be treated as transitional.
 
 It provides:
 
@@ -32,7 +31,7 @@ The executor may return:
 ```ts
 import { db } from "@/drizzle/index.ts";
 import { createCommander } from "@mission-control/core";
-import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
+import { createPgPersistenceAdapter } from "@mission-control/adapter-postgres";
 import { reminderMission } from "./reminder-mission.ts";
 
 const commander = createCommander({
@@ -47,7 +46,7 @@ const commander = createCommander({
 
 ```ts
 import { createCommander } from "@mission-control/core";
-import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
+import { createPgPersistenceAdapter } from "@mission-control/adapter-postgres";
 import { reminderMission } from "./reminder-mission.ts";
 
 const commander = createCommander({

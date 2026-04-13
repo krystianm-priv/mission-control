@@ -1,8 +1,8 @@
 {
-	"name": "@mission-control/sqlite-commander",
+	"name": "@mission-control/adapter-sqlite",
 	"version": "1.0.0-rc.1",
 	"private": true,
-	"description": "SQLite-backed durable commander for Mission Control.",
+	"description": "SQLite-backed durable adapter for Mission Control.",
 	"type": "module",
 	"license": "MIT",
 	"main": "./src/index.ts",

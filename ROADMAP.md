@@ -95,7 +95,7 @@ Acceptance criteria:
 - docs describe the current repo honestly
 
 ### MC-002 — Align workspace and package naming with the adapter model
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

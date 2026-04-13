@@ -73,7 +73,7 @@ This is the fast local runtime for tests, examples, and development.
 
 ### `@mission-control/adapter-*`
 
-Durable backends belong under `adapters/*` and should be published with names like:
+Durable backends live under `adapters/*` and should be published with names like:
 
 - `@mission-control/adapter-sqlite`
 - `@mission-control/adapter-postgres`
@@ -90,21 +90,19 @@ Adapters own backend-specific concerns such as:
 
 ## Workspace direction
 
-The repository is moving toward a workspace layout shaped like:
+The repository workspace is shaped like:
 
 - `packages/core`
 - `packages/in-memory-commander`
 - `adapters/*`
 - `examples/*`
 
-Durable backends should live in `adapters/*`, not in `packages/*`.
+Durable backends now live under:
 
-Today, the durable runtime experiments still live under:
+- `adapters/postgres`
+- `adapters/sqlite`
 
-- `packages/postgres-commander`
-- `packages/sqlite-commander`
-
-That package layout is transitional. The adapter-shaped move is tracked separately in `ROADMAP.md` as `MC-002`.
+They are exposed with adapter package names rather than the older `*-commander` naming.
 
 ## What Mission Control does well already
 
