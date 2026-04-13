@@ -99,7 +99,8 @@ Naming rule:
 Intended role:
 
 - SQLite durable adapter package
-- likely package name: `@mission-control/adapter-sqlite`
+- package name: `@mission-control/adapter-sqlite`
+- currently not the reference v1 backend
 
 Typical responsibilities:
 
@@ -115,7 +116,8 @@ Typical responsibilities:
 Intended role:
 
 - Postgres durable adapter package
-- likely package name: `@mission-control/adapter-postgres`
+- package name: `@mission-control/adapter-postgres`
+- current reference v1 backend
 
 Typical responsibilities:
 
@@ -143,7 +145,7 @@ Typical responsibilities:
 ### `examples/durable-reminder`
 
 - durable adapter example
-- should use the real v1 reference adapter once chosen
+- uses the current v1 reference adapter: `@mission-control/adapter-postgres`
 - useful for reload / timer / retry examples
 
 ## Conceptual architecture

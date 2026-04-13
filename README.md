@@ -88,6 +88,19 @@ Adapters own backend-specific concerns such as:
 
 `core` must not absorb those concerns.
 
+## First v1 backend
+
+The first reference durable backend for Mission Control v1 is `@mission-control/adapter-postgres`.
+
+That choice is based on the current repository state:
+
+- `@mission-control/adapter-postgres` is already shaped like a publishable package
+- it uses an explicit `execute(query)` boundary instead of relying on Node experimental runtime features
+- the durable example and release-pack flow already point at the Postgres adapter
+- restart-recovery coverage for signals, sleep timers, and retry backoff already exists for it
+
+`@mission-control/adapter-sqlite` remains valuable for local comparison and continued iteration, but it is not the reference v1 backend today.
+
 ## Workspace direction
 
 The repository workspace is shaped like:

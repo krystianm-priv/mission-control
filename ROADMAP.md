@@ -203,7 +203,7 @@ Acceptance criteria:
 ## Milestone 4 — First real durable adapter
 
 ### MC-007 — Choose the first production-quality durable adapter and make it the v1 reference backend
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

@@ -2,7 +2,7 @@
 
 `@mission-control/adapter-postgres` is the Postgres-backed durable adapter package in this pre-v1 repository.
 
-It is part of the durable adapter work, but the roadmap has not yet declared a single reference v1 backend.
+It is the current reference durable backend for the first Mission Control v1 release.
 
 It provides:
 
@@ -69,3 +69,4 @@ const mission = await commander.start(reminderMission, {
 - Optional local tests may use `@electric-sql/pglite`, but it is not part of the required runtime story.
 - This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
 - If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.
+- It is the first v1 reference backend because it is already non-private, example-backed, and closer to publishable package shape than the SQLite adapter.
