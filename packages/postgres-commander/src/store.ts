@@ -91,7 +91,7 @@ export class PgStore {
 			this.execute,
 			`SELECT * FROM mc_missions WHERE mission_id = ${sqlLiteral(missionId)}`,
 		);
-		const row = rows[0] as SerializedInspectionRow | undefined;
+		const row = rows[0] as unknown as SerializedInspectionRow | undefined;
 		return row ? deserializeInspection(row) : undefined;
 	}
 

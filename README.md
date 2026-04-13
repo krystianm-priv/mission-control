@@ -2,6 +2,12 @@
 
 Mission Control is a TypeScript workflow runtime for long-lived, typed missions.
 
+The release model is intentionally pure Node.js `24+` plus TypeScript:
+
+- no compile step is required to run the repo
+- packages publish source-first `.ts` entrypoints
+- the v1 package story avoids external runtime dependencies
+
 The v1 release candidate ships three publishable packages:
 
 - `@mission-control/core`
@@ -59,7 +65,7 @@ Owns:
 
 ## Requirements
 
-- Node.js `22.11+`
+- Node.js `24+`
 
 `@mission-control/postgres-commander` does not require a specific client library.
 You provide a single `execute(query: string)` function that runs raw SQL against Postgres.
@@ -71,25 +77,40 @@ const commander = new PgCommander({
 });
 ```
 
-The durable test suite uses `@electric-sql/pglite` when it is installed locally so the repo can verify Postgres semantics without external infrastructure.
+The durable test suite may use `@electric-sql/pglite` when it is installed locally so the repo can verify Postgres semantics without external infrastructure, but it is not part of the required runtime story.
 
 ## Quick start
 
 ```ts
-import { z } from "zod";
 import { m } from "@mission-control/core";
 import { InMemoryCommander } from "@mission-control/in-memory-commander";
 
 const approvalMission = m
 	.define("approval")
 	.start({
-		input: z.strictObject({ email: z.email() }),
+		input: {
+			parse: (input) => {
+				const value = input as { email?: unknown };
+				if (typeof value.email !== "string" || !value.email.includes("@")) {
+					throw new Error("Invalid approval input.");
+				}
+				return { email: value.email };
+			},
+		},
 		run: async ({ ctx }) => ({ email: ctx.events.start.input.email }),
 	})
 	.step("send-email", async ({ ctx }) => ({
 		sentTo: ctx.events.start.output.email,
 	}))
-	.needTo("receive-approval", z.strictObject({ approvedBy: z.string() }))
+	.needTo("receive-approval", {
+		parse: (input) => {
+			const value = input as { approvedBy?: unknown };
+			if (typeof value.approvedBy !== "string") {
+				throw new Error("Invalid approval signal.");
+			}
+			return { approvedBy: value.approvedBy };
+		},
+	})
 	.end();
 
 const commander = new InMemoryCommander({
@@ -106,16 +127,29 @@ console.log(mission.inspect());
 ## Durable Postgres example
 
 ```ts
-import { PGlite } from "@electric-sql/pglite";
-import { z } from "zod";
-
 import { m } from "@mission-control/core";
 import { PgCommander } from "@mission-control/postgres-commander";
 
 const reminderMission = m
 	.define("reminder")
 	.start({
-		input: z.strictObject({ recipient: z.email(), message: z.string() }),
+		input: {
+			parse: (input) => {
+				const value = input as { recipient?: unknown; message?: unknown };
+				if (
+					typeof value.recipient !== "string" ||
+					!value.recipient.includes("@") ||
+					typeof value.message !== "string" ||
+					value.message.length === 0
+				) {
+					throw new Error("Invalid reminder input.");
+				}
+				return {
+					recipient: value.recipient,
+					message: value.message,
+				};
+			},
+		},
 		run: async ({ ctx }) => ctx.events.start.input,
 	})
 	.sleep("wait-before-send", 1_000)
@@ -125,11 +159,9 @@ const reminderMission = m
 	}))
 	.end();
 
-const db = await PGlite.create("./mission-control-pgdata");
-
 const commander = new PgCommander({
 	definitions: [reminderMission],
-	execute: (query) => db.exec(query),
+	execute: (query) => db.execute(query),
 });
 
 const mission = commander.createMission(reminderMission);

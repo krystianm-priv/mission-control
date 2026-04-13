@@ -6,6 +6,7 @@
 		"erasableSyntaxOnly": true,
 		"strict": true,
 		"noEmit": true,
+		"skipLibCheck": true,
 		"types": ["node"],
 		"allowImportingTsExtensions": true
 	}

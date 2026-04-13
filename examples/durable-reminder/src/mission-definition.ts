@@ -1,13 +1,27 @@
 import { m } from "@mission-control/core";
-import { z } from "zod/v4";
+
+function parseReminderInput(input: unknown) {
+	const value = input as { recipient?: unknown; message?: unknown };
+
+	if (
+		typeof value.recipient !== "string" ||
+		!value.recipient.includes("@") ||
+		typeof value.message !== "string" ||
+		value.message.length < 1
+	) {
+		throw new Error("Invalid durable reminder input.");
+	}
+
+	return {
+		recipient: value.recipient,
+		message: value.message,
+	};
+}
 
 export const durableReminderMission = m
 	.define("durable-reminder")
 	.start({
-		input: z.strictObject({
-			recipient: z.email(),
-			message: z.string().min(1),
-		}),
+		input: { parse: parseReminderInput },
 		run: async ({ ctx }) => ({
 			recipient: ctx.events.start.input.recipient,
 			message: ctx.events.start.input.message,

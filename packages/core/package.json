@@ -4,8 +4,22 @@
 	"description": "Typed mission definition DSL and shared runtime validation for Mission Control.",
 	"type": "module",
 	"license": "MIT",
+	"engines": {
+		"node": "^24"
+	},
 	"main": "./src/index.ts",
-	"peerDependencies": {
-		"typescript": "6.0.2"
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.ts",
+		"README.md"
+	],
+	"scripts": {
+		"check-types": "tsc -p tsconfig.json --noEmit",
+		"lint": "biome check .",
+		"test": "sh -c 'node --experimental-strip-types --test $(find src -name \"*.test.ts\" -print)'"
 	}
 }

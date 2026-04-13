@@ -6,6 +6,12 @@ Use this file as the default operating manual for coding agents working in this 
 
 The goal is to ship `mission-control` v1 as a real release candidate whose immediate next step is `npm publish`.
 
+This repository is intentionally a pure Node.js `24+` plus TypeScript project:
+
+- no compile step is required for normal development or runtime execution
+- source packages ship directly from `src/*.ts`
+- the public v1 story should avoid external runtime dependencies
+
 Read these files first, in order:
 
 1. `ROADMAP.md`
@@ -30,6 +36,8 @@ v1 must include:
 - timers
 - inspection APIs
 - restart-safe reload/resume for the Postgres runtime
+- native Node.js `24+` execution of `.ts` source via erasable syntax
+- no required external runtime dependencies in the v1 package story
 
 v1 does **not** include workflow versioning for already-running missions.
 
@@ -99,6 +107,12 @@ The intended architecture is:
 - `in-memory-commander`: in-memory runtime
 - `postgres-commander`: durable Postgres-backed runtime behind an `execute(query: string)` boundary
 
+The intended delivery model is source-first:
+
+- publish `.ts` source packages for Node.js `24+`
+- avoid dist/build artifacts in the public release path
+- keep runtime semantics inside Node.js with no bundler requirement
+
 ### 4. Shared engine first
 
 If logic is needed by both commanders, put it behind shared runtime contracts instead of duplicating it.
@@ -117,7 +131,7 @@ Do not add speculative abstractions for imagined future backends.
 
 A roadmap task is not complete without tests appropriate to the change.
 
-Use focused unit tests for local logic and PGlite-backed tests for durable Postgres semantics when the dependency is available locally.
+Use focused unit tests for local logic and optional PGlite-backed tests for durable Postgres semantics when that dependency is available locally.
 
 ### 8. Docs are part of the task
 

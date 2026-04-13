@@ -2,6 +2,12 @@
 
 This roadmap tracks the real v1 release candidate for `mission-control`.
 
+The repo target is a pure Node.js `24+` plus TypeScript release:
+
+- no compile step required for normal usage
+- publish source-first packages from `src/*.ts`
+- no required external runtime dependencies in the core v1 story
+
 The shipped package set is:
 
 - `@mission-control/core`
@@ -28,6 +34,7 @@ v1 does **not** include workflow versioning for already-running missions.
 4. Missions survive process reloads and continue from durable Postgres state.
 5. Signals, retries, and timers work durably through the Postgres runtime.
 6. Root docs, examples, exports, scripts, and tarballs match reality.
+7. The release path is explicit about being Node.js `24+` plus TypeScript with no required build step.
 
 ## Milestone 1 — Repository truth
 
@@ -64,17 +71,17 @@ v1 does **not** include workflow versioning for already-running missions.
 
 ## Milestone 4 — Release candidate cleanup
 
-### MC-010 — Update README, package READMEs, and examples to the final public API
+### MC-010 — Update README, package READMEs, and examples to the final public API and Node 24 source-first runtime story
 **Status:** [x]
 
-### MC-011 — Ensure build, typecheck, test, and pack scripts reflect the real release path
+### MC-011 — Ensure typecheck, test, lint, and pack scripts reflect the real no-build release path
 **Status:** [x]
 
-### MC-012 — Keep package tarballs free of accidental test/build junk
+### MC-012 — Keep published source-package tarballs free of accidental junk and non-v1 packages
 **Status:** [x]
 
 ## Known v1 limits
 
 - the Postgres runtime currently targets single-process usage, not multi-worker leasing
-- durable tests rely on `@electric-sql/pglite` when that package is installed locally
+- durable tests may optionally use `@electric-sql/pglite` when it is installed locally, but it is not part of the required v1 runtime story
 - no workflow versioning for already-running missions

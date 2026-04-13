@@ -5,7 +5,7 @@
 ## Public surface
 
 - `m.define(...).start(...).step(...).needTo(...).sleep(...).end()`
-- schema helpers: `Schema`, `AnyInputSchema`, `InferInput`, `parseMissionInput`
+- schema helpers: `Schema`, `AnyInputSchema`, `Infer`, `parseMissionInput`
 - retry helpers: `DEFAULT_RETRY_POLICY`, `normalizeRetryPolicy`, `getRetryDelayMs`
 - timer helpers: `NeedToOptions`, `WaitTimeoutDefinition`, `SleepResult`
 - commander contracts: `MissionSnapshot`, `MissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
@@ -15,13 +15,20 @@
 ## Example
 
 ```ts
-import { z } from "zod";
 import { Commander, m } from "@mission-control/core";
 
 const reminderMission = m
 	.define("reminder")
 	.start({
-		input: z.strictObject({ userId: z.string() }),
+		input: {
+			parse: (input) => {
+				const value = input as { userId?: unknown };
+				if (typeof value.userId !== "string") {
+					throw new Error("Invalid reminder input.");
+				}
+				return { userId: value.userId };
+			},
+		},
 		run: async ({ ctx }) => ({ userId: ctx.events.start.input.userId }),
 	})
 	.sleep("wait-before-reminder", 30_000)

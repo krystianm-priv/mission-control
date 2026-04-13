@@ -1,5 +1,4 @@
 import { m } from "@mission-control/core";
-import { z } from "zod/v4";
 import {
 	fakeCreateShipment,
 	fakeInventoryCheck,
@@ -7,16 +6,84 @@ import {
 	fakeReserveInventory,
 } from "./utils.ts";
 
+function parseOrderInput(input: unknown) {
+	const value = input as {
+		orderId?: unknown;
+		email?: unknown;
+		sku?: unknown;
+		quantity?: unknown;
+		shippingAddress?: unknown;
+	};
+
+	if (
+		typeof value.orderId !== "string" ||
+		typeof value.email !== "string" ||
+		!value.email.includes("@") ||
+		typeof value.sku !== "string" ||
+		typeof value.quantity !== "number" ||
+		!Number.isInteger(value.quantity) ||
+		value.quantity <= 0 ||
+		typeof value.shippingAddress !== "string"
+	) {
+		throw new Error("Invalid order fulfillment input.");
+	}
+
+	return {
+		orderId: value.orderId,
+		email: value.email,
+		sku: value.sku,
+		quantity: value.quantity,
+		shippingAddress: value.shippingAddress,
+	};
+}
+
+function parsePaymentConfirmation(input: unknown) {
+	const value = input as {
+		paymentId?: unknown;
+		amount?: unknown;
+		currency?: unknown;
+	};
+
+	if (
+		typeof value.paymentId !== "string" ||
+		typeof value.amount !== "number" ||
+		value.amount <= 0 ||
+		typeof value.currency !== "string" ||
+		value.currency.length !== 3
+	) {
+		throw new Error("Invalid payment confirmation.");
+	}
+
+	return {
+		paymentId: value.paymentId,
+		amount: value.amount,
+		currency: value.currency,
+	};
+}
+
+function parseDeliveryConfirmation(input: unknown) {
+	const value = input as {
+		deliveredAt?: unknown;
+		receivedBy?: unknown;
+	};
+
+	if (
+		typeof value.deliveredAt !== "string" ||
+		typeof value.receivedBy !== "string"
+	) {
+		throw new Error("Invalid delivery confirmation.");
+	}
+
+	return {
+		deliveredAt: value.deliveredAt,
+		receivedBy: value.receivedBy,
+	};
+}
+
 export const orderFulfillmentMission = m
 	.define("order-fulfillment")
 	.start({
-		input: z.strictObject({
-			orderId: z.string(),
-			email: z.email(),
-			sku: z.string(),
-			quantity: z.number().int().positive(),
-			shippingAddress: z.string(),
-		}),
+		input: { parse: parseOrderInput },
 		run: async ({ ctx }) => {
 			const { sku, quantity } = ctx.events.start.input;
 			return fakeInventoryCheck(sku, quantity);
@@ -31,14 +98,7 @@ export const orderFulfillmentMission = m
 			ctx.events.start.input.quantity,
 		);
 	})
-	.needTo(
-		"confirm-payment",
-		z.strictObject({
-			paymentId: z.string(),
-			amount: z.number().positive(),
-			currency: z.string().length(3),
-		}),
-	)
+	.needTo("confirm-payment", { parse: parsePaymentConfirmation })
 	.step("create-shipment", async ({ ctx }) => {
 		return fakeCreateShipment({
 			orderId: ctx.events.start.input.orderId,
@@ -52,13 +112,7 @@ export const orderFulfillmentMission = m
 			`Your order shipped via ${carrier}. Tracking: ${trackingNumber}`,
 		);
 	})
-	.needTo(
-		"confirm-delivery",
-		z.strictObject({
-			deliveredAt: z.string(),
-			receivedBy: z.string(),
-		}),
-	)
+	.needTo("confirm-delivery", { parse: parseDeliveryConfirmation })
 	.step("close-order", async ({ ctx }) => {
 		const { orderId } = ctx.events.start.input;
 		const { deliveredAt, receivedBy } = ctx.events["confirm-delivery"].input;

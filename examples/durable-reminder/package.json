@@ -6,13 +6,11 @@
 	"scripts": {
 		"check-types": "tsc -p tsconfig.json --noEmit",
 		"lint": "biome check .",
-		"test": "node --test",
-		"dev": "node --watch src/index.ts"
+		"test": "sh -c 'node --experimental-strip-types --test $(find src -name \"*.test.ts\" -print)'",
+		"dev": "node --experimental-strip-types --watch src/index.ts"
 	},
 	"dependencies": {
-		"@electric-sql/pglite": "^0.4.4",
 		"@mission-control/core": "*",
-		"@mission-control/postgres-commander": "*",
-		"zod": "^4.3.6"
+		"@mission-control/postgres-commander": "*"
 	}
 }

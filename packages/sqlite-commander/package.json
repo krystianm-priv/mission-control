@@ -1,6 +1,7 @@
 {
 	"name": "@mission-control/sqlite-commander",
 	"version": "1.0.0-rc.1",
+	"private": true,
 	"description": "SQLite-backed durable commander for Mission Control.",
 	"type": "module",
 	"license": "MIT",

@@ -32,18 +32,15 @@ const commander = new PgCommander({
 });
 ```
 
-## PGlite example
+## Minimal local example
 
 ```ts
-import { PGlite } from "@electric-sql/pglite";
 import { PgCommander } from "@mission-control/postgres-commander";
 import { reminderMission } from "./reminder-mission.ts";
 
-const db = await PGlite.create("./missions-pgdata");
-
 const commander = new PgCommander({
 	definitions: [reminderMission],
-	execute: (query) => db.exec(query),
+	execute: (query) => db.execute(query),
 });
 
 const mission = commander.createMission(reminderMission);
@@ -57,4 +54,4 @@ await mission.start({
 
 - The commander stores JSON payloads and inspection state in a single `mc_missions` table.
 - The package does not inject a query builder or ORM. It only requires the raw `execute(query)` boundary.
-- The test suite uses `@electric-sql/pglite` when it is installed locally.
+- Optional local tests may use `@electric-sql/pglite`, but it is not part of the required runtime story.

@@ -6,6 +6,7 @@
 
 - product README for the current v1 release candidate
 - describes the three public packages and the `PgCommander` execute-boundary API
+- should explicitly describe the Node.js `24+` plus TypeScript, no-build, zero-runtime-dependency story
 
 ### `ROADMAP.md`
 
@@ -18,7 +19,8 @@
 
 ### `package.json`
 
-- workspace scripts for build, typecheck, lint, test, and pack verification
+- workspace scripts for typecheck, lint, test, and pack verification
+- should reflect the no-build Node.js `24+` release path
 
 ## Packages
 
@@ -32,6 +34,7 @@ Purpose:
 - retry/timer metadata
 - shared execution engine
 - abstract `Commander` base class
+- no external runtime dependencies
 
 Key files:
 
@@ -48,6 +51,7 @@ Purpose:
 
 - in-memory runtime implementation
 - deterministic local semantics for tests and examples
+- no external runtime dependencies
 
 Key files:
 
@@ -63,6 +67,7 @@ Purpose:
 - schema bootstrap and migrations
 - persistence/reload/resume semantics
 - integration boundary through `execute(query: string)`
+- no required external runtime dependencies in the core package story
 
 Key files:
 
@@ -75,8 +80,13 @@ Key files:
 
 Notes:
 
-- durable tests use `@electric-sql/pglite` when it is installed locally
+- durable tests may use `@electric-sql/pglite` when it is installed locally
 - the package itself does not depend on a specific Postgres client
+
+## Delivery model
+
+- packages are intended to publish source-first `.ts` entrypoints for Node.js `24+`
+- the repo should not require a compile step for normal development or runtime usage
 
 ## Examples
 
@@ -91,7 +101,7 @@ Notes:
 ### `examples/durable-reminder`
 
 - Postgres-backed durability example using `PgCommander`
-- demonstrates the `execute(query)` API with PGlite
+- demonstrates the `execute(query)` API without introducing a required runtime dependency
 
 ## Package boundaries
 
@@ -105,3 +115,4 @@ Notes:
 - alternate durable backends
 - multi-process leasing/orchestration across separate workers
 - external workflow-engine adapters
+- the legacy `packages/sqlite-commander` workspace, which is retained only as a private non-v1 package
