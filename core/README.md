@@ -36,6 +36,24 @@ The commander does not require a query builder, ORM, queue, or leasing protocol.
 For the current pre-v1 runtime, adapters are expected to support single-process recovery semantics that match the existing in-memory runtime and the durable runtime experiments in this repository.
 If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before calling `createMission(...)` directly.
 
+## Recovery and side effects
+
+The current `core` runtime is explicit about mission-state recovery, not about exactly-once side-effect execution.
+
+What `core` currently models durably:
+
+- start input and any persisted event outputs already recorded in mission context
+- waiting state for signals, sleep timers, and retry backoff
+- step-attempt history, signal receipts, timer history, and terminal failures
+
+What `core` does not solve by itself:
+
+- deduplicating user-defined side effects across process crashes or reloads
+- proving that a step body ran exactly once
+- preventing replay when user code performs an external side effect before the next persisted inspection write completes
+
+When documenting or implementing adapters, treat mission recovery as restart-safe for persisted mission state, but treat user code as replayable unless the application adds its own idempotency boundary.
+
 ## Example
 
 ```ts

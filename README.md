@@ -142,6 +142,27 @@ Acceptable likely limits include:
 
 Those are acceptable as long as they are stated clearly and not hidden behind inflated claims.
 
+## Current execution guarantees
+
+Today, Mission Control is explicit about waits, retries, timers, and inspection state, but it is still conservative about side-effect guarantees.
+
+What the current runtime does guarantee:
+
+- mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, and terminal failures
+- recovery can rehydrate waiting and running missions from persisted inspection state
+- retries, timer wakeups, and signal handling are explicit in mission history and inspection output
+
+What the current runtime does not guarantee:
+
+- exactly-once execution of user-defined side effects
+- automatic idempotency for `start` handlers, step bodies, or timer-triggered work
+- protection against replaying user code after a crash between a side effect and the next persisted inspection write
+
+The practical rule for v1 is:
+
+- treat Mission Control as durable for mission state and recovery coordination
+- treat application side effects as at-least-once unless your own code makes them idempotent
+
 ## Non-goals for v1
 
 v1 does **not** need to include:

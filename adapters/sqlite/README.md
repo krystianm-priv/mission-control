@@ -38,3 +38,8 @@ await mission.start({
 	message: "Persist me",
 });
 ```
+
+## Notes
+
+- This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
+- If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.

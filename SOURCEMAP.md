@@ -179,6 +179,7 @@ These are the intended long-term architectural anchors:
 - runtime adapters live under `adapters/*`
 - durable backend package names use `@mission-control/adapter-*`
 - v1 must be honest about guarantees and limits
+- snapshot persistence alone is not sufficient to claim exactly-once side-effect execution
 
 ## Out of scope for v1
 

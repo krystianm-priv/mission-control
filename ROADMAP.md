@@ -162,7 +162,7 @@ Acceptance criteria:
 ## Milestone 3 — Execution model honesty
 
 ### MC-005 — Audit side-effect and replay semantics for v1 honesty
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

@@ -67,3 +67,5 @@ const mission = await commander.start(reminderMission, {
 - The commander stores JSON payloads and inspection state in a single `mc_missions` table.
 - The package does not inject a query builder or ORM. It only requires the raw `execute(query)` boundary.
 - Optional local tests may use `@electric-sql/pglite`, but it is not part of the required runtime story.
+- This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
+- If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.
