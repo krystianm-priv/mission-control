@@ -1,106 +1,203 @@
 # Mission Control
 
-Mission Control is a TypeScript workflow runtime for long-lived, typed missions.
+Mission Control is a TypeScript workflow / mission runtime for long-lived application flows.
 
-The release model is intentionally pure Node.js `24+` plus TypeScript:
+It is being built in the same broad problem space as tools like Temporal and DBOS, but with a smaller, sharper, more explicit v1.
 
-- no compile step is required to run the repo
-- packages publish source-first `.ts` entrypoints
-- the v1 package story avoids external runtime dependencies
+## Current status
 
-The v1 release candidate ships three publishable packages:
+Mission Control is currently **pre-v1**.
 
-- `@mission-control/core`
-- `@mission-control/in-memory-commander`
-- `@mission-control/postgres-commander`
+The repository already contains useful pieces:
 
-## What it ships today
+- a typed mission definition DSL
+- a shared execution engine
+- an explicit in-memory runtime
+- experiments around durable persistence
+- tests and examples for waits, signals, timers, and retries
 
-- typed mission definitions
-- runtime input validation for `start(...)` and `signal(...)`
-- sequential steps
-- external waits with `needTo(...)`
-- timer waits with `sleep(...)`
-- retry policies with backoff metadata
-- inspection APIs for mission snapshot, history, attempts, signals, and timers
-- an explicit abstract `Commander` base class in core
-- a shared `createCommander(...)` API with pluggable persistence adapters
-- an in-memory runtime for tests and fast local execution
-- a durable Postgres adapter that persists state and resumes after reload
+But this does **not** yet mean:
 
-## What v1 does not include
+- v1 is complete
+- durability guarantees are fully production-grade
+- the publishable package story is final
+- the current repo structure is the final architecture
 
-- workflow versioning for already-running missions
-- adapters to Temporal, DBOS, RabbitMQ, or other workflow engines
-- visual builders
-- browser-first runtimes
+This repository should be treated as an active productization effort, not a finished release candidate.
 
-## Runtime packages
+## Product direction
+
+Mission Control v1 is intended to provide:
+
+- a typed mission / workflow DSL
+- an explicit execution model
+- support for:
+  - sequential steps
+  - external signals
+  - sleeps / timers
+  - retries / backoff
+- inspection APIs
+- restart-safe recovery through a durable adapter
+- a clean boundary between:
+  - shared runtime logic
+  - in-memory execution
+  - durable storage adapters
+
+## Repository architecture
+
+The intended architecture is:
 
 ### `@mission-control/core`
 
 Owns:
 
-- the mission DSL
-- shared types and validation helpers
-- retry and timer metadata
-- the abstract `Commander` base class
-- the shared configurable commander runtime and persistence adapter contract
-- runtime-neutral contracts and shared execution engine
+- the mission definition DSL
+- shared contracts and types
+- validation helpers
+- retry and timer primitives
+- the shared execution engine
+- commander abstractions
+- durable adapter-facing persistence contracts and recovery contract helpers
+
+This package should remain runtime-neutral.
 
 ### `@mission-control/in-memory-commander`
 
 Owns:
 
-- the `InMemoryCommander` compatibility wrapper
-- deterministic testing helpers
+- the explicit in-memory runtime adapter
+- local testing helpers
+- deterministic development behavior
 
-### `@mission-control/postgres-commander`
+This is the fast local runtime for tests, examples, and development.
 
-Owns:
+### `@mission-control/adapter-*`
 
-- the Postgres persistence adapter and `PgCommander` compatibility wrapper
-- schema bootstrap and migrations
-- durable persistence for waits, retries, timers, and inspection state
-- restart-safe reload and resume
-- a minimal `execute(query: string)` integration boundary
+Durable backends live under `adapters/*` and should be published with names like:
 
-## Requirements
+- `@mission-control/adapter-sqlite`
+- `@mission-control/adapter-postgres`
 
-- Node.js `24+`
+Adapters own backend-specific concerns such as:
 
-`@mission-control/postgres-commander` does not require a specific client library.
-You provide a single `execute(query: string)` function that runs raw SQL against Postgres.
+- schema and migrations
+- serialization
+- storage reads and writes
+- durable recovery behavior
+- backend-specific tests
 
-```ts
-const commander = createCommander({
-	definitions: [durableReminderMission],
-	persistence: createPgPersistenceAdapter({
-		execute: (query) => db.execute(query),
-	}),
-});
-```
+`core` must not absorb those concerns.
 
-The durable test suite may use `@electric-sql/pglite` when it is installed locally so the repo can verify Postgres semantics without external infrastructure, but it is not part of the required runtime story.
+## First v1 backend
 
-## Persistence adapters
+The first reference durable backend for Mission Control v1 is `@mission-control/adapter-postgres`.
 
-`createCommander(...)` accepts an optional `persistence` adapter.
-If you provide one, the adapter persists whole `MissionInspection` objects and drives restart-safe recovery through `listRecoverableInspections()`.
+That choice is based on the current repository state:
 
-For v1, the minimum supported contract is:
+- `@mission-control/adapter-postgres` is already shaped like a publishable package
+- its publishable tarball is now scoped to runtime source plus README instead of test fixtures
+- it uses an explicit `execute(query)` boundary instead of relying on Node experimental runtime features
+- the durable example and release-pack flow point at the Postgres adapter
+- restart-recovery coverage for signals, sleep timers, and retry backoff already exists for it
 
-- `bootstrap()` for one-time startup work before recovery
-- `saveInspection(inspection)` to persist the latest runtime state
-- `loadInspection(missionId)` to load one mission by id
-- `listWaitingSnapshots()` and `listScheduledSnapshots()` for inspection APIs
-- `listRecoverableInspections()` for startup rehydration
-- optional synchronous `close()` cleanup
+`@mission-control/adapter-sqlite` remains valuable for local comparison and continued iteration, but it is not the reference v1 backend today.
 
-The built-in Postgres package is one implementation of that contract, and the default behavior with no adapter remains in-memory.
-If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before direct `createMission(...)` calls.
+## Workspace direction
 
-## Quick start
+The repository workspace is shaped like:
+
+- `core`
+- `runtime`
+- `client`
+- `testing`
+- `cli`
+- `adapters/*`
+- `examples/*`
+
+The current adapter directories include:
+
+- `adapters/in-memory`
+- `adapters/postgres`
+- `adapters/sqlite`
+
+`@mission-control/core` now lives at the repo root, and the runtime implementations live under `adapters/*`.
+
+## What Mission Control does well already
+
+Today the repo already demonstrates:
+
+- typed start and signal inputs
+- additive mission metadata for queries, updates, and schedules
+- mission flows with explicit waits
+- timer-based pauses
+- retry policy metadata and execution
+- mission inspection state
+- rehydration-oriented runtime state
+- thin `runtime` and `client` package boundaries around the preserved mission DSL
+
+That makes it a strong foundation.
+
+## What still needs to become true for v1
+
+Mission Control v1 is only real once all of the following are true:
+
+- package naming and workspace structure match the adapter-oriented architecture
+- the durable adapter contract is clearly defined in `core`
+- at least one durable adapter is genuinely publishable
+- restart-safe recovery for signals, timers, and retries is proven for that adapter
+- examples compile against the shared `createCommander(...)` API and the reference durable adapter
+- docs stop overclaiming current maturity
+- examples, exports, and release scripts match the real package graph
+
+## Honest v1 limits
+
+The first real v1 will likely still have limits.
+
+Acceptable likely limits include:
+
+- single-process oriented recovery
+- no workflow versioning for already-running missions
+- only one production-grade durable adapter
+- some idempotency responsibility remaining with application code
+- no multi-worker claim / lease system yet
+
+Those are acceptable as long as they are stated clearly and not hidden behind inflated claims.
+
+## Current execution guarantees
+
+Today, Mission Control is explicit about waits, retries, timers, and inspection state, but it is still conservative about side-effect guarantees.
+
+What the current runtime does guarantee:
+
+- mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, and terminal failures
+- recovery can rehydrate waiting and running missions from persisted inspection state
+- retries, timer wakeups, and signal handling are explicit in mission history and inspection output
+- additive mission queries and updates can be registered on definitions and executed through mission handles
+
+What the current runtime does not guarantee:
+
+- exactly-once execution of user-defined side effects
+- automatic idempotency for `start` handlers, step bodies, or timer-triggered work
+- protection against replaying user code after a crash between a side effect and the next persisted inspection write
+
+The practical rule for v1 is:
+
+- treat Mission Control as durable for mission state and recovery coordination
+- treat application side effects as at-least-once unless your own code makes them idempotent
+
+## Non-goals for v1
+
+v1 does **not** need to include:
+
+- visual builders
+- browser-first runtimes
+- Temporal bridge adapters
+- DBOS bridge adapters
+- generic BPM designer tooling
+- every possible durable backend
+- multi-cluster orchestration
+
+## Example: in-memory mission
 
 ```ts
 import { createCommander, m } from "@mission-control/core";
@@ -140,69 +237,7 @@ const commander = createCommander({
 const mission = await commander.start(approvalMission, {
 	email: "ops@example.com",
 });
+
 await mission.signal("receive-approval", { approvedBy: "reviewer-1" });
 
 console.log(mission.inspect());
-```
-
-## Durable Postgres example
-
-```ts
-import { createCommander, m } from "@mission-control/core";
-import { createPgPersistenceAdapter } from "@mission-control/postgres-commander";
-
-const reminderMission = m
-	.define("reminder")
-	.start({
-		input: {
-			parse: (input) => {
-				const value = input as { recipient?: unknown; message?: unknown };
-				if (
-					typeof value.recipient !== "string" ||
-					!value.recipient.includes("@") ||
-					typeof value.message !== "string" ||
-					value.message.length === 0
-				) {
-					throw new Error("Invalid reminder input.");
-				}
-				return {
-					recipient: value.recipient,
-					message: value.message,
-				};
-			},
-		},
-		run: async ({ ctx }) => ctx.events.start.input,
-	})
-	.sleep("wait-before-send", 1_000)
-	.step("send-reminder", async ({ ctx }) => ({
-		sentTo: ctx.events.start.output.recipient,
-		body: ctx.events.start.output.message,
-	}))
-	.end();
-
-const commander = createCommander({
-	definitions: [reminderMission],
-	persistence: createPgPersistenceAdapter({
-		execute: (query) => db.execute(query),
-	}),
-});
-
-const mission = await commander.start(reminderMission, {
-	recipient: "hello@example.com",
-	message: "This mission survives process reloads through durable Postgres state.",
-});
-await mission.waitForCompletion();
-```
-
-## Verification
-
-```bash
-npm run release:check
-npm run release:pack
-```
-
-## Examples
-
-- `examples/ask-user-for-review`
-- `examples/order-fulfillment`
-- `examples/durable-reminder`

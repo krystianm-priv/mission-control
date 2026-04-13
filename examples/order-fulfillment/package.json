@@ -4,7 +4,6 @@
 	"private": true,
 	"type": "module",
 	"dependencies": {
-		"@mission-control/in-memory-commander": "*",
 		"@mission-control/core": "*"
 	}
 }

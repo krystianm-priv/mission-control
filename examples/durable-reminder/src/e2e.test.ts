@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
-import { MissionValidationError } from "@mission-control/core";
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
+import {
+	type EngineClock,
+	MissionValidationError,
+} from "@mission-control/core";
 
+import { createDurableReminderCommander } from "./index.ts";
 import { durableReminderMission } from "./mission-definition.ts";
 
 const validInput = {
@@ -15,96 +21,182 @@ const invalidInput = {
 	message: "",
 };
 
-test("e2e: durable reminder happy path (mocked timers)", async (t) => {
-	const mock = t.mock;
+class FakeClock implements EngineClock {
+	private nowMs = 0;
+	private readonly tasks: Array<{ dueAt: number; resolve: () => void }> = [];
 
-	// ⏱️ fake timers
-	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	public now(): Date {
+		return new Date(this.nowMs);
+	}
 
-	const commander = new InMemoryCommander({
-		createMissionId: () => "reminder-1",
-		definitions: [durableReminderMission],
-	});
+	public sleep(ms: number): Promise<void> {
+		return new Promise((resolve) => {
+			this.tasks.push({ dueAt: this.nowMs + ms, resolve });
+		});
+	}
 
-	const mission = commander.createMission(durableReminderMission);
+	public async advanceBy(ms: number): Promise<void> {
+		this.nowMs += ms;
+		const ready = this.tasks.filter((task) => task.dueAt <= this.nowMs);
+		this.tasks.splice(
+			0,
+			this.tasks.length,
+			...this.tasks.filter((task) => task.dueAt > this.nowMs),
+		);
+		for (const task of ready) {
+			task.resolve();
+			await Promise.resolve();
+		}
+	}
+}
 
-	await mission.start(validInput);
+async function createPGliteHarness(): Promise<
+	| {
+			createExecute: () => Promise<(query: string) => Promise<unknown>>;
+			cleanup: () => Promise<void>;
+	  }
+	| undefined
+> {
+	try {
+		const mod = await import("@electric-sql/pglite");
+		const dir = mkdtempSync(
+			join(tmpdir(), "mission-control-durable-reminder-"),
+		);
+		const path = join(dir, "pgdata");
+		const openDbs: Array<{ close(): Promise<void> }> = [];
+		return {
+			createExecute: async () => {
+				const db = await mod.PGlite.create(path);
+				openDbs.push(db);
+				return (query: string) => db.exec(query);
+			},
+			cleanup: async () => {
+				for (const db of openDbs.splice(0)) {
+					await db.close();
+				}
+				rmSync(dir, { recursive: true, force: true });
+			},
+		};
+	} catch {
+		return undefined;
+	}
+}
 
-	assert.equal(mission.status, "waiting");
+test("e2e: durable reminder happy path uses the Postgres adapter", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
 
-	// ⏩ fast-forward time instead of waiting 1s
-	mock.timers.tick(1000);
+	const clock = new FakeClock();
 
-	await mission.waitForCompletion();
+	try {
+		const commander = createDurableReminderCommander(
+			await harness.createExecute(),
+			{
+				clock,
+				createMissionId: () => "reminder-1",
+			},
+		);
+		const mission = await commander.start(durableReminderMission, validInput);
 
-	assert.equal(mission.status, "completed");
+		assert.equal(mission.status, "waiting");
 
-	const state = mission.inspect();
+		await clock.advanceBy(1000);
+		await mission.waitForCompletion();
 
-	assert.equal(
-		(state.snapshot.ctx.events["start"]?.input as { recipient: string })
-			.recipient,
-		validInput.recipient,
-	);
+		assert.equal(mission.status, "completed");
 
-	assert.equal(
-		(state.snapshot.ctx.events["send-reminder"]?.output as { sentTo: string })
-			.sentTo,
-		validInput.recipient,
-	);
+		const state = mission.inspect();
 
-	assert.equal(
-		(state.snapshot.ctx.events["send-reminder"]?.output as { body: string })
-			.body,
-		validInput.message,
-	);
+		assert.equal(
+			(state.snapshot.ctx.events["start"]?.input as { recipient: string })
+				.recipient,
+			validInput.recipient,
+		);
+
+		assert.equal(
+			(state.snapshot.ctx.events["send-reminder"]?.output as { sentTo: string })
+				.sentTo,
+			validInput.recipient,
+		);
+
+		assert.equal(
+			(state.snapshot.ctx.events["send-reminder"]?.output as { body: string })
+				.body,
+			validInput.message,
+		);
+
+		commander.close();
+	} finally {
+		await harness.cleanup();
+	}
 });
 
 test("e2e: invalid start input fails fast", async () => {
-	const commander = new InMemoryCommander({
-		createMissionId: () => "reminder-2",
-		definitions: [durableReminderMission],
-	});
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
 
-	const mission = commander.createMission(durableReminderMission);
+	try {
+		const commander = createDurableReminderCommander(
+			await harness.createExecute(),
+			{
+				createMissionId: () => "reminder-2",
+			},
+		);
 
-	await assert.rejects(
-		() => mission.start(invalidInput as never),
-		MissionValidationError,
-	);
+		await assert.rejects(
+			() => commander.start(durableReminderMission, invalidInput as never),
+			MissionValidationError,
+		);
 
-	assert.equal(mission.status, "failed");
+		const mission =
+			await commander.getMission<typeof durableReminderMission>("reminder-2");
+		assert.ok(mission);
+		assert.equal(mission.status, "failed");
+		commander.close();
+	} finally {
+		await harness.cleanup();
+	}
 });
 
-test("e2e: sleep is controlled by mocked time", async (t) => {
-	const mock = t.mock;
+test("e2e: durable reminder sleep stays scheduled until the clock advances", async () => {
+	const harness = await createPGliteHarness();
+	if (!harness) {
+		return;
+	}
 
-	mock.timers.enable({ apis: ["setTimeout", "Date"] });
+	const clock = new FakeClock();
 
-	const commander = new InMemoryCommander({
-		createMissionId: () => "reminder-3",
-		definitions: [durableReminderMission],
-	});
+	try {
+		const commander = createDurableReminderCommander(
+			await harness.createExecute(),
+			{
+				clock,
+				createMissionId: () => "reminder-3",
+			},
+		);
+		const mission = await commander.start(durableReminderMission, validInput);
 
-	const mission = commander.createMission(durableReminderMission);
+		assert.equal(mission.status, "waiting");
 
-	await mission.start(validInput);
+		await clock.advanceBy(500);
+		assert.equal(mission.status, "waiting");
 
-	assert.equal(mission.status, "waiting");
+		await clock.advanceBy(500);
+		await mission.waitForCompletion();
 
-	// not advanced yet → still waiting
-	mock.timers.tick(500);
-	assert.equal(mission.status, "waiting");
+		assert.equal(mission.status, "completed");
 
-	// complete remaining time
-	mock.timers.tick(500);
+		const state = mission.inspect();
 
-	await mission.waitForCompletion();
+		assert.ok(state.snapshot.ctx.events["wait-before-send"]);
+		assert.ok(state.snapshot.ctx.events["send-reminder"]);
 
-	assert.equal(mission.status, "completed");
-
-	const state = mission.inspect();
-
-	assert.ok(state.snapshot.ctx.events["wait-before-send"]);
-	assert.ok(state.snapshot.ctx.events["send-reminder"]);
+		commander.close();
+	} finally {
+		await harness.cleanup();
+	}
 });

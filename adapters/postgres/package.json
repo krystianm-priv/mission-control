@@ -1,0 +1,22 @@
+{
+	"name": "@mission-control/adapter-postgres",
+	"version": "1.0.0-rc.1",
+	"description": "Postgres-backed durable adapter for Mission Control.",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": "^24"
+	},
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.ts",
+		"README.md"
+	],
+	"dependencies": {
+		"@mission-control/core": "*"
+	}
+}
