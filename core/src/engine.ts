@@ -520,6 +520,11 @@ export function hydrateEngineRuntime(
 export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 	const waiting = runtime.snapshot.waiting;
 	if (!waiting) {
+		if (runtime.snapshot.status === "waiting") {
+			throw new MissionExecutionError(
+				"Mission waiting status is out of sync with persisted waiting state.",
+			);
+		}
 		if (runtime.snapshot.status === "running") {
 			try {
 				await runUntilWaitOrEnd(runtime);
@@ -530,6 +535,12 @@ export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 		}
 		settleCompletion(runtime);
 		return;
+	}
+
+	if (runtime.snapshot.status !== "waiting") {
+		throw new MissionExecutionError(
+			"Mission waiting state is out of sync with persisted status.",
+		);
 	}
 
 	if (waiting.kind === "signal") {
@@ -546,7 +557,9 @@ export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 	}
 
 	if (!waiting.timerDueAt) {
-		return;
+		throw new MissionExecutionError(
+			"Timer waiting state is missing a persisted due time.",
+		);
 	}
 
 	const node = runtime.definition.nodes[waiting.nodeIndex];

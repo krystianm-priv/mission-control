@@ -6,6 +6,7 @@ import {
 	type EngineClock,
 	hydrateEngineRuntime,
 	inspectRuntime,
+	MissionExecutionError,
 	MissionValidationError,
 	m,
 	recoverRuntime,
@@ -156,6 +157,84 @@ test("recoverRuntime preserves persisted signal waits without deadlines", async 
 	});
 });
 
+test("recoverRuntime rejects waiting status without waiting metadata", async () => {
+	const mission = m
+		.define("broken-waiting-status")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.needTo("approval", {
+			parse: (input) => input as { approved: boolean },
+		})
+		.end();
+
+	const runtime = hydrateEngineRuntime(mission, {
+		snapshot: {
+			missionId: "mission-broken-status",
+			missionName: mission.missionName,
+			status: "waiting",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "mission-broken-status",
+				events: { start: { input: { id: "123" }, output: { ok: true } } },
+			},
+			waiting: undefined,
+		},
+		history: [],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	});
+
+	await assert.rejects(
+		() => recoverRuntime(runtime),
+		MissionExecutionError,
+	);
+});
+
+test("recoverRuntime rejects waiting metadata with a non-waiting status", async () => {
+	const mission = m
+		.define("broken-waiting-metadata")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.needTo("approval", {
+			parse: (input) => input as { approved: boolean },
+		})
+		.end();
+
+	const runtime = hydrateEngineRuntime(mission, {
+		snapshot: {
+			missionId: "mission-broken-metadata",
+			missionName: mission.missionName,
+			status: "running",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "mission-broken-metadata",
+				events: { start: { input: { id: "123" }, output: { ok: true } } },
+			},
+			waiting: {
+				kind: "signal",
+				eventName: "approval",
+				nodeIndex: 1,
+			},
+		},
+		history: [],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	});
+
+	await assert.rejects(
+		() => recoverRuntime(runtime),
+		MissionExecutionError,
+	);
+});
+
 test("recoverRuntime resumes persisted sleep timers with durable timer state", async () => {
 	const clock = new FakeClock();
 	const mission = m
@@ -191,6 +270,52 @@ test("recoverRuntime resumes persisted sleep timers with durable timer state", a
 				| undefined
 		)?.resumedAt,
 		new Date(500).toISOString(),
+	);
+});
+
+test("recoverRuntime rejects persisted timer waits without due times", async () => {
+	const mission = m
+		.define("broken-timer-wait")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.sleep("pause", 500)
+		.end();
+
+	const runtime = hydrateEngineRuntime(mission, {
+		snapshot: {
+			missionId: "mission-broken-timer",
+			missionName: mission.missionName,
+			status: "waiting",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "mission-broken-timer",
+				events: { start: { input: { id: "123" }, output: { ok: true } } },
+			},
+			waiting: {
+				kind: "timer",
+				eventName: "pause",
+				nodeIndex: 1,
+				timerDueAt: "" as unknown as string,
+			},
+		},
+		history: [],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	});
+
+	runtime.snapshot.waiting = {
+		kind: "timer",
+		eventName: "pause",
+		nodeIndex: 1,
+	} as unknown as typeof runtime.snapshot.waiting;
+
+	await assert.rejects(
+		() => recoverRuntime(runtime),
+		MissionExecutionError,
 	);
 });
 

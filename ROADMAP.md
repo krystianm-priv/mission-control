@@ -182,7 +182,7 @@ Acceptance criteria:
 - no public docs imply stronger guarantees than the engine actually provides
 
 ### MC-006 — Tighten retry, timer, and signal recovery semantics in the shared engine
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

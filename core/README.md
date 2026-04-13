@@ -30,6 +30,7 @@ Expected semantics:
 - `listWaitingSnapshots()` returns `WaitingMissionSnapshot[]` for inspection APIs
 - `listScheduledSnapshots()` returns `ScheduledMissionSnapshot[]` for waiting timer/retry missions, ordered however the backend considers canonical
 - `listRecoverableInspections()` returns `RecoverableMissionInspection[]` for missions in `waiting` or `running` states that should be rehydrated on startup
+- recovery should fail fast when persisted `status` and `waiting` metadata disagree, rather than leaving a mission in an ambiguous hung state
 - `close()` is optional synchronous cleanup for backend resources owned by the adapter
 
 The commander does not require a query builder, ORM, queue, or leasing protocol.
