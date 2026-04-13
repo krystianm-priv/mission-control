@@ -7,19 +7,21 @@
 - `InMemoryCommander`
 - `FakeClock`
 
-There is no singleton commander instance in the public API. Create runtimes explicitly with `new InMemoryCommander(...)`.
+The preferred v1 API is `createCommander(...)` from `@mission-control/core`.
+`InMemoryCommander` remains as a thin compatibility wrapper around that shared implementation.
 
 ## Example
 
 ```ts
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
+import { createCommander } from "@mission-control/core";
 import { approvalMission } from "./approval-mission.ts";
 
-const commander = new InMemoryCommander({
+const commander = createCommander({
 	definitions: [approvalMission],
 });
 
-const mission = commander.createMission(approvalMission);
-await mission.start({ email: "hello@example.com" });
+const mission = await commander.start(approvalMission, {
+	email: "hello@example.com",
+});
 await mission.signal("receive-approval", { approvedBy: "ops" });
 ```

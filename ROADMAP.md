@@ -80,6 +80,18 @@ v1 does **not** include workflow versioning for already-running missions.
 ### MC-012 — Keep published source-package tarballs free of accidental junk and non-v1 packages
 **Status:** [x]
 
+## Milestone 5 — Post-RC API follow-up
+
+### MC-013 — Document and stabilize the `createCommander(...)` persistence-adapter API
+**Status:** [x]
+
+Scope:
+
+- define the minimum supported `CommanderPersistenceAdapter` contract for third-party durable backends
+- document expected semantics for bootstrap, save/load, waiting/scheduled listing, and restart-safe recovery
+- add focused examples for adapter-driven usage in addition to compatibility wrappers
+- verify the shared factory API remains aligned with the three-package v1 release story
+
 ## Known v1 limits
 
 - the Postgres runtime currently targets single-process usage, not multi-worker leasing

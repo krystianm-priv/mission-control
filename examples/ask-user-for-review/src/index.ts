@@ -1,12 +1,10 @@
-import { InMemoryCommander } from "@mission-control/in-memory-commander";
+import { createCommander } from "@mission-control/core";
 import { askForReviewMission } from "./mission-definition.ts";
 
-const commander = new InMemoryCommander({
+const commander = createCommander({
 	definitions: [askForReviewMission],
 });
-const myFirstMission = commander.createMission(askForReviewMission);
-
-await myFirstMission.start({
+const myFirstMission = await commander.start(askForReviewMission, {
 	email: "hello@example.com",
 });
 
