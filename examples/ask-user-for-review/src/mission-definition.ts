@@ -1,16 +1,18 @@
-import { z } from "zod";
+import { m } from "@mission-control/core";
+import { z } from "zod/v4";
 import {
 	createReviewRequestRecord,
 	fakeMailer,
 	fakeSpamChecker,
 	updateReviewRequestRecordWithReview,
 } from "./utils.ts";
-import { m } from "@mission-control/core";
 
 export const askForReviewMission = m
 	.define("ask-for-review")
 	.start({
-		input: z.strictObject({ email: z.email() }),
+		input: z.strictObject({
+			email: z.email(),
+		}),
 		run: async ({ ctx }) => {
 			return {
 				recordId: await createReviewRequestRecord(ctx.events.start.input.email),
@@ -23,7 +25,10 @@ export const askForReviewMission = m
 			content: `Please review the item with missionId: ${ctx.missionId}`,
 		});
 	})
-	.needTo("receive-review", z.string())
+	.needTo(
+		"receive-review",
+		z.string().min(1, "Review content cannot be empty."),
+	)
 	.step("anti-spam", async ({ ctx }) => {
 		return {
 			isSpam: await fakeSpamChecker(ctx.events["receive-review"].input),

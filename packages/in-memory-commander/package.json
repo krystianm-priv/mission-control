@@ -1,0 +1,19 @@
+{
+	"name": "@mission-control/in-memory-commander",
+	"version": "1.0.0-rc.1",
+	"description": "In-memory commander implementation for Mission Control.",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": "^24"
+	},
+	"main": "./src/index.ts",
+	"files": [
+		"src",
+		"!src/**/*.test.ts",
+		"README.md"
+	],
+	"dependencies": {
+		"@mission-control/core": "*"
+	}
+}

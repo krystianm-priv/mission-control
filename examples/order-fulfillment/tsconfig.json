@@ -1,11 +1,4 @@
 {
-	"compilerOptions": {
-		"module": "nodenext",
-		"moduleResolution": "nodenext",
-		"target": "esnext",
-		"types": ["bun"],
-		"noEmit": true,
-		"allowImportingTsExtensions": true,
-		"erasableSyntaxOnly": true
-	}
+	"extends": "../../tsconfig.base.json",
+	"include": ["src/**/*.ts"]
 }

@@ -1,14 +1,19 @@
 {
 	"name": "@mission-control/core",
-	"private": true,
-	"main": "./m.ts",
+	"version": "1.0.0-rc.1",
+	"description": "Typed mission definition DSL and shared runtime validation for Mission Control.",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": "^24"
+	},
+	"main": "./src/index.ts",
+	"files": [
+		"src",
+		"!src/**/*.test.ts",
+		"README.md"
+	],
 	"devDependencies": {
-		"@types/bun": "latest"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	},
-	"dependencies": {
-		"zod": "^4.3.6"
+		"@types/node": "^24"
 	}
 }

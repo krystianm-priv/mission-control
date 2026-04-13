@@ -1,0 +1,95 @@
+import type { RetryPolicy } from "./retry-policy.ts";
+import type { AnyInputSchema, iInferInput } from "./schema.ts";
+import type { NeedToOptions, SleepResult } from "./timer.ts";
+
+export interface EventRecord {
+	input?: unknown;
+	output?: unknown;
+}
+
+export type EventsMap = Record<string, EventRecord>;
+
+export interface MissionContext<E extends EventsMap = EventsMap> {
+	missionId: string;
+	events: E;
+}
+
+export type AddEvent<
+	E extends EventsMap,
+	Name extends string,
+	Rec extends EventRecord,
+> = E & { [K in Name]: Rec };
+
+export type AssertNewEventName<
+	E extends EventsMap,
+	N extends string,
+> = N extends keyof E ? never : N;
+
+export interface StartNode {
+	kind: "start";
+	inputSchema: AnyInputSchema;
+	run: (args: { ctx: MissionContext }) => Promise<unknown>;
+}
+
+export interface StepNode {
+	kind: "step";
+	name: string;
+	run: (args: { ctx: MissionContext }) => Promise<unknown>;
+	retryPolicy: RetryPolicy;
+}
+
+export interface NeedToNode {
+	kind: "needTo";
+	name: string;
+	inputSchema: AnyInputSchema;
+	timeout?: NeedToOptions["timeout"];
+}
+
+export interface SleepNode {
+	kind: "sleep";
+	name: string;
+	durationMs: number;
+}
+
+export interface EndNode {
+	kind: "end";
+}
+
+export type MissionNode =
+	| StartNode
+	| StepNode
+	| NeedToNode
+	| SleepNode
+	| EndNode;
+
+export interface MissionStaticDefinition {
+	missionName: string;
+	nodes: Array<
+		| { kind: "start" }
+		| { kind: "step"; name: string; retryPolicy: RetryPolicy }
+		| { kind: "needTo"; name: string; timeout?: NeedToOptions["timeout"] }
+		| { kind: "sleep"; name: string; durationMs: number }
+		| { kind: "end" }
+	>;
+}
+
+export interface MissionDefinition<E extends EventsMap = EventsMap> {
+	missionName: string;
+	nodes: MissionNode[];
+	toStatic(): MissionStaticDefinition;
+	context: MissionContext<E>;
+}
+
+export type ExternalEventNames<M extends MissionDefinition> = {
+	[K in keyof M["context"]["events"]]: M["context"]["events"][K] extends {
+		input: unknown;
+	}
+		? M["context"]["events"][K] extends { output: unknown }
+			? never
+			: K
+		: never;
+}[keyof M["context"]["events"]];
+
+export type SleepEventRecord = { output: SleepResult };
+
+export type NeedToInput<S extends AnyInputSchema> = { input: iInferInput<S> };

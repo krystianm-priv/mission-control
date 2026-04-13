@@ -1,5 +1,7 @@
-import { eq } from "drizzle-orm";
-import { db, userReviewRequests } from "./db.ts";
+const reviewRequests = new Map<
+	string,
+	{ email: string; receivedReview?: string }
+>();
 
 export const fakeMailer = async ({
 	to: _to,
@@ -18,22 +20,21 @@ export const fakeSpamChecker = async (content: string) => {
 };
 
 export const createReviewRequestRecord = async (email: string) => {
-	const recordId = await db
-		.insert(userReviewRequests)
-		.values({
-			email,
-			id: crypto.randomUUID(),
-		})
-		.returning();
-	return recordId[0].id;
+	const id = crypto.randomUUID();
+	reviewRequests.set(id, { email });
+	return id;
 };
 
 export const updateReviewRequestRecordWithReview = async (args: {
 	id: string;
 	review: string;
 }) => {
-	await db
-		.update(userReviewRequests)
-		.set({ received_review: args.review })
-		.where(eq(userReviewRequests.id, args.id));
+	const current = reviewRequests.get(args.id);
+	if (!current) {
+		throw new Error(`Missing review request record "${args.id}".`);
+	}
+	reviewRequests.set(args.id, {
+		...current,
+		receivedReview: args.review,
+	});
 };

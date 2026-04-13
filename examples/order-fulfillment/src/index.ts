@@ -1,9 +1,12 @@
-import { inMemoryCommander } from "@mission-control/commander";
+import { InMemoryCommander } from "@mission-control/in-memory-commander";
 import { orderFulfillmentMission } from "./mission-definition.ts";
 
-const mission = inMemoryCommander.createMission(orderFulfillmentMission);
+const commander = new InMemoryCommander({
+	definitions: [orderFulfillmentMission],
+});
+const mission = commander.createMission(orderFulfillmentMission);
 
-await mission.startMission({
+await mission.start({
 	orderId: "order-1001",
 	email: "buyer@example.com",
 	sku: "sku-apple-001",
@@ -12,7 +15,7 @@ await mission.startMission({
 });
 
 setTimeout(() => {
-	mission.signal("confirm-payment", {
+	void mission.signal("confirm-payment", {
 		paymentId: "pay-9012",
 		amount: 59.99,
 		currency: "USD",
@@ -20,8 +23,11 @@ setTimeout(() => {
 }, 100);
 
 setTimeout(() => {
-	mission.signal("confirm-delivery", {
+	void mission.signal("confirm-delivery", {
 		deliveredAt: new Date().toISOString(),
 		receivedBy: "Alex P.",
 	});
 }, 200);
+
+await mission.waitForCompletion();
+console.log(mission.inspect());
