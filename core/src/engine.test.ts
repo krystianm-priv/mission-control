@@ -103,16 +103,139 @@ test("recoverRuntime preserves persisted signal timeout deadlines", async () => 
 	const created = createEngineRuntime(mission, "mission-timeout", { clock });
 	await startRuntime(created, { id: "123" });
 	const persisted = inspectRuntime(created);
-	const originalTimeoutAt = persisted.snapshot.waiting?.timeoutAt;
+	const originalTimeoutAt =
+		persisted.snapshot.waiting?.kind === "signal"
+			? persisted.snapshot.waiting.timeoutAt
+			: undefined;
 
 	await clock.advanceBy(100);
 	const recovered = hydrateEngineRuntime(mission, persisted, { clock });
 	await recoverRuntime(recovered);
 
-	assert.equal(recovered.snapshot.waiting?.timeoutAt, originalTimeoutAt);
+	assert.equal(
+		recovered.snapshot.waiting?.kind === "signal"
+			? recovered.snapshot.waiting.timeoutAt
+			: undefined,
+		originalTimeoutAt,
+	);
 	await clock.advanceBy(400);
 	await assert.rejects(() => waitForCompletion(recovered));
 	assert.equal(recovered.snapshot.status, "failed");
+	assert.equal(recovered.snapshot.error?.at, new Date(500).toISOString());
+});
+
+test("recoverRuntime preserves persisted signal waits without deadlines", async () => {
+	const mission = m
+		.define("signal-recovery")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.needTo("approval", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.step("finish", async ({ ctx }) => ({
+			approvedBy: ctx.events.approval.input.approvedBy,
+		}))
+		.end();
+
+	const created = createEngineRuntime(mission, "mission-signal-recovery");
+	await startRuntime(created, { id: "123" });
+	const persisted = inspectRuntime(created);
+
+	const recovered = hydrateEngineRuntime(mission, persisted);
+	await recoverRuntime(recovered);
+	assert.equal(recovered.snapshot.status, "waiting");
+	assert.deepEqual(recovered.snapshot.waiting, persisted.snapshot.waiting);
+
+	await signalRuntime(recovered, "approval", { approvedBy: "ops" });
+	const snapshot = await waitForCompletion(recovered);
+	assert.equal(snapshot.status, "completed");
+	assert.deepEqual(recovered.snapshot.ctx.events["finish"]?.output, {
+		approvedBy: "ops",
+	});
+});
+
+test("recoverRuntime resumes persisted sleep timers with durable timer state", async () => {
+	const clock = new FakeClock();
+	const mission = m
+		.define("timer-recovery")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.sleep("pause", 500)
+		.step("finish", async () => ({ ok: true }))
+		.end();
+
+	const created = createEngineRuntime(mission, "mission-timer-recovery", { clock });
+	await startRuntime(created, { id: "123" });
+	const persisted = inspectRuntime(created);
+
+	assert.equal(persisted.snapshot.waiting?.kind, "timer");
+	assert.equal(persisted.timers.at(-1)?.status, "scheduled");
+	assert.ok(persisted.snapshot.waiting?.timerDueAt);
+
+	await clock.advanceBy(100);
+	const recovered = hydrateEngineRuntime(mission, persisted, { clock });
+	await recoverRuntime(recovered);
+	await clock.advanceBy(400);
+
+	const snapshot = await waitForCompletion(recovered);
+	assert.equal(snapshot.status, "completed");
+	assert.equal(recovered.timers.at(-1)?.status, "completed");
+	assert.equal(
+		(
+			recovered.snapshot.ctx.events["pause"]?.output as
+				| { resumedAt?: string }
+				| undefined
+		)?.resumedAt,
+		new Date(500).toISOString(),
+	);
+});
+
+test("recoverRuntime resumes persisted retry backoff with durable attempt state", async () => {
+	const clock = new FakeClock();
+	let attempts = 0;
+	const mission = m
+		.define("retry-recovery")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.step(
+			"unstable",
+			async () => {
+				attempts += 1;
+				if (attempts === 1) {
+					throw new Error("transient");
+				}
+				return { ok: true };
+			},
+			{ retry: { maxAttempts: 2, initialIntervalMs: 500 } },
+		)
+		.end();
+
+	const created = createEngineRuntime(mission, "mission-retry-recovery", { clock });
+	await startRuntime(created, { id: "123" });
+	const persisted = inspectRuntime(created);
+
+	assert.equal(persisted.snapshot.waiting?.kind, "retry");
+	assert.equal(persisted.stepAttempts.length, 1);
+	assert.equal(persisted.stepAttempts[0]?.status, "failed");
+	assert.equal(persisted.timers.at(-1)?.kind, "retry");
+	assert.equal(persisted.timers.at(-1)?.status, "scheduled");
+
+	await clock.advanceBy(100);
+	const recovered = hydrateEngineRuntime(mission, persisted, { clock });
+	await recoverRuntime(recovered);
+	await clock.advanceBy(400);
+
+	const snapshot = await waitForCompletion(recovered);
+	assert.equal(snapshot.status, "completed");
+	assert.equal(recovered.stepAttempts.length, 2);
+	assert.equal(recovered.stepAttempts[1]?.status, "succeeded");
+	assert.equal(recovered.timers.at(-1)?.status, "completed");
 });
 
 test("timer wake-up failures transition the mission to failed", async () => {
@@ -138,6 +261,7 @@ test("timer wake-up failures transition the mission to failed", async () => {
 	await assert.rejects(() => waitForCompletion(runtime));
 	assert.equal(runtime.snapshot.status, "failed");
 	assert.equal(runtime.snapshot.error?.message, "boom");
+	assert.equal(runtime.snapshot.error?.at, new Date(10).toISOString());
 });
 
 test("invalid signals leave the mission waiting for corrected input", async () => {

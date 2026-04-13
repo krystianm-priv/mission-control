@@ -25,16 +25,20 @@ export function serializeInspection(
 	createdAt?: string,
 ): SerializedInspectionRow {
 	const now = new Date().toISOString();
+	const waiting = inspection.snapshot.waiting;
 	return {
 		mission_id: inspection.snapshot.missionId,
 		mission_name: inspection.snapshot.missionName,
 		status: inspection.snapshot.status,
 		cursor: inspection.snapshot.cursor,
-		waiting_kind: inspection.snapshot.waiting?.kind ?? null,
-		waiting_event_name: inspection.snapshot.waiting?.eventName ?? null,
-		waiting_node_index: inspection.snapshot.waiting?.nodeIndex ?? null,
-		timeout_at: inspection.snapshot.waiting?.timeoutAt ?? null,
-		timer_due_at: inspection.snapshot.waiting?.timerDueAt ?? null,
+		waiting_kind: waiting?.kind ?? null,
+		waiting_event_name: waiting?.eventName ?? null,
+		waiting_node_index: waiting?.nodeIndex ?? null,
+		timeout_at: waiting?.kind === "signal" ? waiting.timeoutAt ?? null : null,
+		timer_due_at:
+			waiting?.kind === "timer" || waiting?.kind === "retry"
+				? waiting.timerDueAt
+				: null,
 		error_json: inspection.snapshot.error
 			? JSON.stringify(inspection.snapshot.error)
 			: null,
@@ -53,21 +57,24 @@ export function deserializeInspection(
 ): MissionInspection {
 	const waiting = row.waiting_kind
 		? (() => {
-				const restored: NonNullable<MissionInspection["snapshot"]["waiting"]> =
-					{
-						kind: row.waiting_kind as NonNullable<
-							MissionInspection["snapshot"]["waiting"]
-						>["kind"],
+				const nodeIndex = row.waiting_node_index ?? 0;
+				if (row.waiting_kind === "signal") {
+					return {
+						kind: "signal",
 						eventName: row.waiting_event_name ?? "",
-						nodeIndex: row.waiting_node_index ?? 0,
-					};
-				if (row.timeout_at) {
-					restored.timeoutAt = row.timeout_at;
+						nodeIndex,
+						...(row.timeout_at ? { timeoutAt: row.timeout_at } : {}),
+					} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
 				}
-				if (row.timer_due_at) {
-					restored.timerDueAt = row.timer_due_at;
-				}
-				return restored;
+				return {
+					kind:
+						row.waiting_kind === "retry"
+							? "retry"
+							: "timer",
+					eventName: row.waiting_event_name ?? "",
+					nodeIndex,
+					timerDueAt: row.timer_due_at ?? new Date(0).toISOString(),
+				} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
 			})()
 		: undefined;
 

@@ -141,7 +141,7 @@ Acceptance criteria:
 - a new durable adapter can be understood from `core` contracts alone
 
 ### MC-004 — Make mission inspection and recovery state a first-class durable unit
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 

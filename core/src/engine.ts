@@ -68,10 +68,11 @@ function createCompletionState(): CompletionState {
 	return { promise, resolve: resolveRef, reject: rejectRef, settled: false };
 }
 
-function toErrorShape(error: unknown) {
+function toErrorShape(error: unknown, at: string) {
 	if (error instanceof Error) {
-		const shaped: { message: string; code?: string; stack?: string } = {
+		const shaped: { message: string; at: string; code?: string; stack?: string } = {
 			message: error.message,
+			at,
 		};
 		if ("code" in error && typeof error.code === "string") {
 			shaped.code = error.code;
@@ -82,7 +83,7 @@ function toErrorShape(error: unknown) {
 		return shaped;
 	}
 
-	return { message: String(error) };
+	return { message: String(error), at };
 }
 
 function appendHistory(
@@ -117,12 +118,13 @@ async function setFailure(
 	runtime: EngineRuntime,
 	error: unknown,
 ): Promise<void> {
+	const failedAt = runtime.clock.now().toISOString();
 	runtime.snapshot.status = "failed";
-	runtime.snapshot.error = toErrorShape(error);
+	runtime.snapshot.error = toErrorShape(error, failedAt);
 	runtime.snapshot.waiting = undefined;
 	appendHistory(runtime, {
 		type: "mission-failed",
-		at: runtime.clock.now().toISOString(),
+		at: failedAt,
 		details: {
 			message: runtime.snapshot.error?.message ?? "Unknown mission failure.",
 		},

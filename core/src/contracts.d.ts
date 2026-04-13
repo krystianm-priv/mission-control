@@ -19,13 +19,7 @@ export interface MissionSnapshot {
 	missionName: string;
 	status: MissionStatus;
 	cursor: number;
-	error:
-		| {
-				message: string;
-				code?: string;
-				stack?: string;
-		  }
-		| undefined;
+	error: MissionFailure | undefined;
 	ctx: {
 		missionId: string;
 		events: Record<string, { input?: unknown; output?: unknown }>;
@@ -33,13 +27,38 @@ export interface MissionSnapshot {
 	waiting: MissionWaitingState | undefined;
 }
 
-export interface MissionWaitingState {
-	kind: "signal" | "timer" | "retry";
+export interface MissionFailure {
+	message: string;
+	at: string;
+	code?: string;
+	stack?: string;
+}
+
+export interface SignalWaitingState {
+	kind: "signal";
 	eventName: string;
 	nodeIndex: number;
 	timeoutAt?: string;
-	timerDueAt?: string;
 }
+
+export interface TimerWaitingState {
+	kind: "timer";
+	eventName: string;
+	nodeIndex: number;
+	timerDueAt: string;
+}
+
+export interface RetryWaitingState {
+	kind: "retry";
+	eventName: string;
+	nodeIndex: number;
+	timerDueAt: string;
+}
+
+export type MissionWaitingState =
+	| SignalWaitingState
+	| TimerWaitingState
+	| RetryWaitingState;
 
 export interface StepAttemptRecord {
 	stepName: string;
@@ -93,10 +112,7 @@ export interface MissionInspection {
 }
 
 export type RecoverableMissionStatus = Extract<MissionStatus, "waiting" | "running">;
-export type ScheduledMissionWaitKind = Extract<
-	MissionWaitingState["kind"],
-	"timer" | "retry"
->;
+export type ScheduledMissionWaitKind = (TimerWaitingState | RetryWaitingState)["kind"];
 
 export interface WaitingMissionSnapshot extends MissionSnapshot {
 	status: "waiting";
@@ -104,9 +120,7 @@ export interface WaitingMissionSnapshot extends MissionSnapshot {
 }
 
 export interface ScheduledMissionSnapshot extends WaitingMissionSnapshot {
-	waiting: MissionWaitingState & {
-		kind: ScheduledMissionWaitKind;
-	};
+	waiting: TimerWaitingState | RetryWaitingState;
 }
 
 export interface RecoverableMissionInspection extends MissionInspection {

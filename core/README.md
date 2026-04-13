@@ -8,7 +8,7 @@
 - schema helpers: `Schema`, `AnyInputSchema`, `Infer`, `parseMissionInput`
 - retry helpers: `DEFAULT_RETRY_POLICY`, `normalizeRetryPolicy`, `getRetryDelayMs`
 - timer helpers: `NeedToOptions`, `WaitTimeoutDefinition`, `SleepResult`
-- commander contracts: `MissionSnapshot`, `MissionInspection`, `WaitingMissionSnapshot`, `ScheduledMissionSnapshot`, `RecoverableMissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
+- commander contracts: `MissionSnapshot`, `MissionInspection`, `MissionFailure`, `SignalWaitingState`, `TimerWaitingState`, `RetryWaitingState`, `WaitingMissionSnapshot`, `ScheduledMissionSnapshot`, `RecoverableMissionInspection`, `MissionHistoryRecord`, `StepAttemptRecord`, `SignalRecord`, `TimerRecord`
 - configurable runtime APIs: `createCommander`, `ConfigurableCommander`, `CommanderPersistenceAdapter`, `isWaitingMissionSnapshot`, `isScheduledMissionSnapshot`, `isRecoverableMissionInspection`
 - runtime engine helpers: `createEngineRuntime`, `hydrateEngineRuntime`, `recoverRuntime`, `startRuntime`, `signalRuntime`, `runUntilWaitOrEnd`
 - abstract base class: `Commander`
@@ -19,7 +19,7 @@
 If omitted, the commander uses an internal in-memory adapter.
 
 Third-party adapters should treat `MissionInspection` as the minimum durable unit.
-That snapshot includes mission state, history, attempts, signals, timers, and waiting metadata, which is the information required for restart-safe recovery.
+That snapshot includes mission state, history, attempts, signals, timers, explicit waiting-state variants, and failure metadata, which is the information required for restart-safe recovery.
 The exported predicate helpers can be used to narrow persisted rows into the exact waiting, scheduled, and recoverable shapes expected by the adapter contract.
 
 Expected semantics:
