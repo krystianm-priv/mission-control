@@ -123,6 +123,11 @@ test("PgCommander survives reload for waiting signal missions", async () => {
 				execute: await harness.createExecute(),
 			}),
 		});
+		await commander2.waitUntilReady();
+		const waiting = await commander2.listWaiting();
+		assert.equal(waiting.length, 1);
+		assert.equal(waiting[0]?.missionId, "mission-signal");
+		assert.equal(waiting[0]?.waiting?.kind, "signal");
 		const loaded =
 			await commander2.getMission<typeof mission>("mission-signal");
 		assert.ok(loaded);
@@ -178,6 +183,14 @@ test("PgCommander resumes sleep timers after reload", async () => {
 			definitions: [mission],
 			clock,
 		});
+		await commander2.waitUntilReady();
+		const scheduled = await commander2.listScheduled();
+		assert.equal(scheduled.length, 1);
+		const scheduledTimer = scheduled[0];
+		assert.ok(scheduledTimer);
+		assert.ok(scheduledTimer.waiting);
+		assert.equal(scheduledTimer.missionId, "mission-timer");
+		assert.equal(scheduledTimer.waiting.kind, "timer");
 		const loaded = await commander2.getMission<typeof mission>("mission-timer");
 		assert.ok(loaded);
 		await clock.advanceBy(1000);
@@ -243,6 +256,14 @@ test("PgCommander resumes retry backoff after reload", async () => {
 			definitions: [mission],
 			clock,
 		});
+		await commander2.waitUntilReady();
+		const scheduled = await commander2.listScheduled();
+		assert.equal(scheduled.length, 1);
+		const scheduledRetry = scheduled[0];
+		assert.ok(scheduledRetry);
+		assert.ok(scheduledRetry.waiting);
+		assert.equal(scheduledRetry.missionId, "mission-retry");
+		assert.equal(scheduledRetry.waiting.kind, "retry");
 		const loaded = await commander2.getMission<typeof mission>("mission-retry");
 		assert.ok(loaded);
 		await clock.advanceBy(1000);

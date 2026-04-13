@@ -70,3 +70,11 @@ const mission = await commander.start(reminderMission, {
 - This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
 - If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.
 - It is the first v1 reference backend because it is already non-private, example-backed, and closer to publishable package shape than the SQLite adapter.
+
+## Proven recovery paths
+
+The current adapter test suite proves restart-safe reload and continuation for:
+
+- waiting signal missions that survive a commander restart and can be resumed afterward
+- scheduled sleep timers that remain discoverable through `listScheduled()` and complete after reload
+- scheduled retry backoff that remains discoverable through `listScheduled()` and resumes after reload

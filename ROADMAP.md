@@ -223,7 +223,7 @@ Acceptance criteria:
 - the repo does not imply that all adapters are equally mature
 
 ### MC-008 — Make the first durable adapter restart-safe for signals, timers, and retries
-**Status:** [ ]
+**Status:** [x]
 
 Depends on:
 
