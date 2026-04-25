@@ -2,208 +2,126 @@
 
 Mission Control is a TypeScript workflow / mission runtime for long-lived application flows.
 
-It is being built in the same broad problem space as tools like Temporal and DBOS, but with a smaller, sharper, more explicit v1.
+It targets a focused MVP with:
+
+- a typed mission definition DSL
+- durable mission inspection state
+- explicit waits, retries, timers, and signals
+- single-instance runtime orchestration through ticks
+- two supported adapters: in-memory and sqlite
 
 ## Current status
 
-Mission Control is a pilot-ready v1 runtime for controlled production use.
+Mission Control MVP is intentionally narrow:
 
-The repository now contains:
-
-- a typed mission definition DSL
-- a shared execution engine
-- an explicit in-memory runtime
-- a managed embedded runtime loop
-- a Postgres durable adapter with task records, history records, claims, lease expiry, cancellation records, and restart recovery
-- client and CLI helpers for starting, inspecting, listing, signalling, updating, and cancelling missions
-- tests and examples for waits, signals, timers, retries, recovery, claims, and cancellation
-
-Pilot-ready means Mission Control is suitable for limited production rollouts where operators understand the runtime model and application code makes external side effects idempotent.
-
-## Product direction
-
-Mission Control v1 is intended to provide:
-
-- a typed mission / workflow DSL
-- an explicit execution model
-- support for:
-  - sequential steps
-  - external signals
-  - sleeps / timers
-  - retries / backoff
-- inspection APIs
-- restart-safe recovery through a durable adapter
-- a clean boundary between:
-  - shared runtime logic
-  - in-memory execution
-  - durable storage adapters
+- supported adapters: `@mission-control/in-memory-commander`, `@mission-control/adapter-sqlite`
+- runtime model: single-instance, tick-driven
+- side-effect model: at-least-once unless application code provides idempotency
+- operator CLI: currently unsupported for MVP
 
 ## Repository architecture
-
-The intended architecture is:
 
 ### `@mission-control/core`
 
 Owns:
 
-- the mission definition DSL
+- mission definition DSL
 - shared contracts and types
 - validation helpers
 - retry and timer primitives
-- the shared execution engine
+- shared execution engine
 - commander abstractions
-- durable adapter-facing persistence contracts and recovery contract helpers
 
-This package should remain runtime-neutral.
+This package remains runtime-neutral.
 
 ### `@mission-control/in-memory-commander`
 
 Owns:
 
-- the explicit in-memory runtime adapter
+- explicit in-memory runtime adapter
 - local testing helpers
-- deterministic development behavior
+- deterministic local behavior
 
-This is the fast local runtime for tests, examples, and development.
+### `@mission-control/adapter-sqlite`
 
-### `@mission-control/adapter-*`
+Owns:
 
-Durable backends live under `adapters/*` and should be published with names like:
-
-- `@mission-control/adapter-sqlite`
-- `@mission-control/adapter-postgres`
-
-Adapters own backend-specific concerns such as:
-
-- schema and migrations
-- serialization
-- storage reads and writes
-- durable recovery behavior
+- sqlite schema and migrations
+- serialization and persistence
+- durable recovery behavior for waits and retries
 - backend-specific tests
 
-`core` must not absorb those concerns.
+### `@mission-control/runtime`
 
-## First v1 backend
+Owns:
 
-The first reference durable backend for Mission Control v1 is `@mission-control/adapter-postgres`.
+- startup tick to inspect incomplete jobs
+- explicit next-tick scheduling (`setNextTickAt`, `setNextTickIn`)
+- single-flight tick guarantees (one tick at a time)
+- logger and metric hooks around runtime/tick lifecycle
 
-That choice is based on the current repository state:
+### Other packages
 
-- `@mission-control/adapter-postgres` is already shaped like a publishable package
-- its publishable tarball is now scoped to runtime source plus README instead of test fixtures
-- it uses an explicit `execute(query, params?)` boundary instead of relying on Node experimental runtime features
-- the durable example and release-pack flow point at the Postgres adapter
-- restart-recovery coverage for signals, sleep timers, and retry backoff already exists for it
+- `@mission-control/client`: mission-native client helpers
+- `@mission-control/testing`: shared test helpers
+- `@mission-control/cli`: retained as private unsupported placeholder package
 
-`@mission-control/adapter-sqlite` remains valuable for local comparison and continued iteration, but it is not the reference v1 backend today.
+## Execution semantics
 
-## Workspace direction
+Mission Control is durable for:
 
-The repository workspace is shaped like:
+- mission state snapshots
+- waits, retries, timers, cancellation requests
+- restart recovery coordination
 
-- `core`
-- `runtime`
-- `client`
-- `testing`
-- `cli`
-- `adapters/*`
-- `examples/*`
+Mission Control does not provide exactly-once side-effect guarantees for user code.
 
-The current adapter directories include:
+Practical rule:
 
-- `adapters/in-memory`
-- `adapters/postgres`
-- `adapters/sqlite`
+- treat mission state as durable
+- treat external side effects as at-least-once unless your application code is idempotent
 
-`@mission-control/core` now lives at the repo root, and the runtime implementations live under `adapters/*`.
+## Runtime tick model
 
-## What Mission Control does well already
+The runtime is built around explicit ticks:
 
-Today the repo already demonstrates:
+1. startup runs a tick that checks incomplete jobs
+2. next tick can be scheduled by timeout (`setNextTickAt` / `setNextTickIn`)
+3. only one tick runs at a time
+4. a tick can start or continue missions but does not own full mission scope
+5. startup can schedule ticks for persisted `start_at*` timer entries
+6. a tick can run even when no jobs are due
+7. a tick does not chain a follow-up tick automatically
 
-- typed start and signal inputs
-- additive mission metadata for queries, updates, and schedules
-- mission flows with explicit waits
-- timer-based pauses
-- retry policy metadata and execution
-- mission inspection state
-- rehydration-oriented runtime state
-- thin `runtime` and `client` package boundaries around the preserved mission DSL
+## Migration notes: polling and claims removed
 
-That makes it a strong foundation.
+This MVP removes the polling and lease-claim runtime model entirely.
 
-## Pilot production limits
+Concept mapping from older runtime designs:
 
-The pilot-ready runtime still has explicit limits:
+- polling loop (`pollIntervalMs`) -> explicit scheduling (`setNextTickAt`, `setNextTickIn`)
+- claim batches (`batchSize`) -> one single-instance tick pass over incomplete missions
+- lease ownership (`identity` + lease timeout) -> process-local single-flight tick guard (`isTickRunning`)
+- claim completion/failure hooks -> mission resume logs and metrics (`mission-resume-started`, `mission-resume-failed`)
+- claim release on shutdown -> timer cleanup + in-flight tick drain on `stop()`
 
-- Postgres is the only pilot production backend.
-- Embedded runtimes coordinate through Postgres task claims and leases; Mission Control is not a multi-cluster orchestration system.
-- External side effects are at-least-once unless application code supplies idempotency.
-- Workflow versioning for already-running missions is not included.
-- There is no web dashboard.
+Migration checklist:
 
-## Current execution guarantees
+1. Remove runtime configuration fields tied to polling and leases.
+2. Configure startup with `createCommanderRuntime(...)`, then call `start()`.
+3. Use `setNextTickAt(...)` or `setNextTickIn(...)` from application code when deferred work should trigger another tick window.
+4. Keep retry/timer durability in adapter persistence; do not attempt to recreate multi-worker claim ownership logic.
+5. Update operational expectations: one process, one tick at a time, no automatic tick chaining.
 
-Today, Mission Control is explicit about waits, retries, timers, and inspection state, but it is still conservative about side-effect guarantees.
+## Non-goals for MVP
 
-What the current runtime does guarantee:
+- multi-instance claim/lease orchestration
+- multi-cluster coordination
+- visual workflow builders
+- browser-first runtime
+- broad backend matrix
 
-- mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, cancellation, and terminal failures
-- the Postgres adapter records durable task rows, history rows, cancellation rows, and claim leases for embedded multi-instance coordination
-- claimed Postgres tasks are not claimed by another runtime while their lease is valid
-- expired Postgres leases can be reclaimed after a runtime crash
-- recovery can rehydrate waiting and running missions from persisted inspection state
-- retries, timer wakeups, signal handling, updates, and cancellations are explicit in mission history and inspection output
-- additive mission queries and updates can be registered on definitions and executed through mission handles
-
-What the current runtime does not guarantee:
-
-- exactly-once execution of user-defined side effects
-- automatic idempotency for `start` handlers, step bodies, or timer-triggered work
-- protection against replaying user code after a crash between a side effect and the next persisted inspection write
-
-The practical rule for v1 is:
-
-- treat Mission Control as durable for mission state and recovery coordination
-- treat application side effects as at-least-once unless your own code makes them idempotent
-
-## Operator basics
-
-`@mission-control/runtime` exposes a managed embedded runtime with:
-
-- `identity`
-- `pollIntervalMs`
-- `batchSize`
-- `leaseTimeoutMs`
-- structured logger hooks
-- metric hooks
-
-`@mission-control/cli` provides JSON operator commands:
-
-```bash
-mission-control list --waiting
-mission-control list --scheduled
-mission-control inspect <missionId>
-mission-control cancel <missionId> "operator reason"
-```
-
-The CLI does not own a database client. Set `MISSION_CONTROL_POSTGRES_EXECUTE_MODULE` to a local module that exports `execute(query, params?)`.
-
-For rollback or shutdown, stop embedded runtimes gracefully. In-flight claimed work either completes or is released by shutdown; if a process crashes, another runtime may reclaim work after the lease expires.
-
-## Non-goals for v1
-
-v1 does **not** need to include:
-
-- visual builders
-- browser-first runtimes
-- Temporal bridge adapters
-- DBOS bridge adapters
-- generic BPM designer tooling
-- every possible durable backend
-- multi-cluster orchestration
-
-## Example: in-memory mission
+## In-memory example
 
 ```ts
 import { createCommander, m } from "@mission-control/core";
@@ -247,3 +165,4 @@ const mission = await commander.start(approvalMission, {
 await mission.signal("receive-approval", { approvedBy: "reviewer-1" });
 
 console.log(mission.inspect());
+```

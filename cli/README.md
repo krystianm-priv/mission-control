@@ -1,16 +1,13 @@
 # @mission-control/cli
 
-`@mission-control/cli` provides JSON operator commands for Postgres-backed Mission Control runtimes.
+`@mission-control/cli` is intentionally unsupported for the MVP runtime.
 
-Commands:
+The package remains in the repository as a placeholder for future operator tooling,
+but it is private and excluded from v1 supported surfaces.
 
-```bash
-mission-control list --waiting
-mission-control list --scheduled
-mission-control inspect <missionId>
-mission-control cancel <missionId> "operator reason"
-```
+Current behavior:
 
-The CLI does not bundle a Postgres client. Set `MISSION_CONTROL_POSTGRES_EXECUTE_MODULE` to a local ESM module that exports `execute(query, params?)` or a default execute function.
+- exports formatting helper utilities
+- `runMissionControlCli(...)` currently throws an unsupported error
 
-The package also exports `runMissionControlCli(...)` for tests and custom operator shells.
+This package should not be used for production or pilot operations in v1.

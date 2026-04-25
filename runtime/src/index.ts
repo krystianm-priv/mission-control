@@ -6,35 +6,16 @@ import {
 	createCommander,
 } from "@mission-control/core";
 
-export interface RuntimeTaskClaim {
-	taskId: string;
+export interface RuntimeStartAtEntry {
 	missionId: string;
-	taskKind: string;
+	startAt: string;
 }
 
-export interface ClaimRuntimeTasksOptions {
-	owner: string;
-	now: Date;
-	leaseMs: number;
-	limit: number;
-}
-
-export interface RuntimeTaskAdapter extends CommanderPersistenceAdapter {
-	claimRuntimeTasks?(
-		options: ClaimRuntimeTasksOptions,
-	): Promise<RuntimeTaskClaim[]>;
-	completeRuntimeTask?(
-		taskId: string,
-		owner: string,
-		now?: Date,
-	): Promise<void> | void;
-	failRuntimeTask?(
-		taskId: string,
-		owner: string,
-		error: unknown,
-		now?: Date,
-	): Promise<void> | void;
-	releaseRuntimeClaims?(owner: string, now?: Date): Promise<void> | void;
+export interface RuntimeTickAdapter extends CommanderPersistenceAdapter {
+	listIncompleteMissionIds?(now?: Date): Promise<string[]> | string[];
+	listStartAtEntries?(now?: Date):
+		| Promise<RuntimeStartAtEntry[]>
+		| RuntimeStartAtEntry[];
 }
 
 export interface CommanderRuntimeLogEvent {
@@ -42,36 +23,35 @@ export interface CommanderRuntimeLogEvent {
 	event:
 		| "runtime-started"
 		| "runtime-stopped"
-		| "task-claimed"
-		| "task-completed"
-		| "task-failed"
-		| "claims-released";
+		| "tick-started"
+		| "tick-completed"
+		| "tick-failed"
+		| "tick-skipped"
+		| "tick-scheduled"
+		| "mission-resume-started"
+		| "mission-resume-failed";
 	identity: string;
-	taskId?: string;
 	missionId?: string;
-	taskKind?: string;
 	error?: unknown;
+	at?: string;
 }
 
 export interface CommanderRuntimeMetricEvent {
 	name:
-		| "runtime.poll"
-		| "runtime.task.claimed"
-		| "runtime.task.completed"
-		| "runtime.task.failed"
-		| "runtime.claims.released";
+		| "runtime.tick"
+		| "runtime.tick.skipped"
+		| "runtime.tick.failed"
+		| "runtime.tick.empty"
+		| "runtime.mission.resume.started"
+		| "runtime.mission.resume.failed";
 	value: number;
 	tags: Record<string, string>;
 }
 
 export interface CreateCommanderRuntimeOptions
 	extends Omit<CreateCommanderOptions, "persistence"> {
-	adapter?: RuntimeTaskAdapter;
+	adapter?: RuntimeTickAdapter;
 	identity?: string;
-	taskQueue?: string;
-	pollIntervalMs?: number;
-	batchSize?: number;
-	leaseTimeoutMs?: number;
 	logger?: (event: CommanderRuntimeLogEvent) => void;
 	metrics?: (event: CommanderRuntimeMetricEvent) => void;
 }
@@ -79,12 +59,12 @@ export interface CreateCommanderRuntimeOptions
 export interface CommanderRuntime {
 	readonly commander: ConfigurableCommander;
 	readonly identity: string;
-	readonly taskQueue: string;
-	readonly pollIntervalMs: number;
-	readonly batchSize: number;
-	readonly leaseTimeoutMs: number;
+	isTickRunning(): boolean;
 	start(): Promise<void>;
 	stop(): Promise<void>;
+	tick(): Promise<boolean>;
+	setNextTickAt(at: Date): void;
+	setNextTickIn(ms: number): void;
 }
 
 export function createCommanderRuntime(
@@ -107,15 +87,10 @@ export function createCommanderRuntime(
 	const commander = createCommander(commanderOptions);
 	const adapter = options.adapter;
 	const identity = options.identity ?? `runtime-${randomUUID()}`;
-	const taskQueue = options.taskQueue ?? "default";
-	const pollIntervalMs = options.pollIntervalMs ?? 1000;
-	const batchSize = options.batchSize ?? 10;
-	const leaseTimeoutMs = options.leaseTimeoutMs ?? 30_000;
 	let running = false;
 	let stopping = false;
-	let loop: Promise<void> | undefined;
-	let sleepTimer: ReturnType<typeof setTimeout> | undefined;
-	let wakeSleep: (() => void) | undefined;
+	let tickInFlight: Promise<boolean> | undefined;
+	let nextTickTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const log = (event: Omit<CommanderRuntimeLogEvent, "identity">): void => {
 		options.logger?.({ ...event, identity });
@@ -126,89 +101,153 @@ export function createCommanderRuntime(
 		value: number,
 		tags: Record<string, string> = {},
 	): void => {
-		options.metrics?.({ name, value, tags: { identity, taskQueue, ...tags } });
+		options.metrics?.({ name, value, tags: { identity, ...tags } });
 	};
 
-	const sleep = (ms: number): Promise<void> =>
-		new Promise((resolve) => {
-			wakeSleep = resolve;
-			sleepTimer = setTimeout(() => {
-				sleepTimer = undefined;
-				wakeSleep = undefined;
-				resolve();
-			}, ms);
+	const clearNextTickTimer = (): void => {
+		if (!nextTickTimer) {
+			return;
+		}
+		clearTimeout(nextTickTimer);
+		nextTickTimer = undefined;
+	};
+
+	const setNextTickAt = (at: Date): void => {
+		clearNextTickTimer();
+		const delayMs = Math.max(0, at.getTime() - Date.now());
+		log({
+			level: "debug",
+			event: "tick-scheduled",
+			at: at.toISOString(),
 		});
-
-	const pollOnce = async (): Promise<void> => {
-		metric("runtime.poll", 1);
-		const tasks =
-			(await adapter?.claimRuntimeTasks?.({
-				owner: identity,
-				now: new Date(),
-				leaseMs: leaseTimeoutMs,
-				limit: batchSize,
-			})) ?? [];
-		for (const task of tasks) {
-			log({
-				level: "info",
-				event: "task-claimed",
-				taskId: task.taskId,
-				missionId: task.missionId,
-				taskKind: task.taskKind,
-			});
-			metric("runtime.task.claimed", 1, { taskKind: task.taskKind });
-			try {
-				await commander.getMission(task.missionId);
-				await adapter?.completeRuntimeTask?.(task.taskId, identity, new Date());
-				log({
-					level: "info",
-					event: "task-completed",
-					taskId: task.taskId,
-					missionId: task.missionId,
-					taskKind: task.taskKind,
-				});
-				metric("runtime.task.completed", 1, { taskKind: task.taskKind });
-			} catch (error) {
-				await adapter?.failRuntimeTask?.(
-					task.taskId,
-					identity,
-					error,
-					new Date(),
-				);
-				log({
-					level: "error",
-					event: "task-failed",
-					taskId: task.taskId,
-					missionId: task.missionId,
-					taskKind: task.taskKind,
-					error,
-				});
-				metric("runtime.task.failed", 1, { taskKind: task.taskKind });
-			}
-		}
+		nextTickTimer = setTimeout(() => {
+			nextTickTimer = undefined;
+			void runtime.tick();
+		}, delayMs);
 	};
 
-	const runLoop = async (): Promise<void> => {
-		while (running && !stopping) {
-			try {
-				await pollOnce();
-			} catch (error) {
-				log({ level: "error", event: "task-failed", error });
-				metric("runtime.task.failed", 1, { taskKind: "poll" });
-			}
-			if (running && !stopping) {
-				await sleep(pollIntervalMs);
+	const setNextTickIn = (ms: number): void => {
+		setNextTickAt(new Date(Date.now() + Math.max(0, ms)));
+	};
+
+	const collectIncompleteMissionIds = async (): Promise<string[]> => {
+		const now = new Date();
+		if (adapter?.listIncompleteMissionIds) {
+			const ids = await adapter.listIncompleteMissionIds(now);
+			return [...new Set(ids)];
+		}
+		const inspections = await adapter?.listRecoverableInspections?.();
+		if (!inspections) {
+			return [];
+		}
+		return [...new Set(inspections.map((inspection) => inspection.snapshot.missionId))];
+	};
+
+	const scheduleStartupStartAtTicks = async (): Promise<void> => {
+		const entries: RuntimeStartAtEntry[] = [];
+		if (adapter?.listStartAtEntries) {
+			entries.push(...(await adapter.listStartAtEntries(new Date())));
+		} else {
+			const scheduled = await adapter?.listScheduledSnapshots?.();
+			for (const snapshot of scheduled ?? []) {
+				if (
+					snapshot.waiting.eventName.startsWith("start_at") &&
+					snapshot.waiting.timerDueAt
+				) {
+					entries.push({
+						missionId: snapshot.missionId,
+						startAt: snapshot.waiting.timerDueAt,
+					});
+				}
 			}
 		}
+
+		if (entries.length === 0) {
+			return;
+		}
+
+		// The runtime keeps one next-tick timer and executes ticks serially.
+		const earliest = entries
+			.map((entry) => new Date(entry.startAt))
+			.filter((date) => Number.isFinite(date.getTime()))
+			.sort((left, right) => left.getTime() - right.getTime())[0];
+		if (!earliest) {
+			return;
+		}
+		setNextTickAt(earliest);
+	};
+
+	const tick = async (): Promise<boolean> => {
+		if (!running || stopping) {
+			return false;
+		}
+		if (tickInFlight) {
+			log({ level: "debug", event: "tick-skipped" });
+			metric("runtime.tick.skipped", 1);
+			return false;
+		}
+
+		tickInFlight = (async () => {
+			try {
+				log({ level: "info", event: "tick-started" });
+				metric("runtime.tick", 1);
+				const missionIds = await collectIncompleteMissionIds();
+				if (missionIds.length === 0) {
+					metric("runtime.tick.empty", 1);
+					log({ level: "debug", event: "tick-completed" });
+					return true;
+				}
+
+				for (const missionId of missionIds) {
+					try {
+						const mission = await commander.getMission(missionId);
+						if (!mission) {
+							continue;
+						}
+						log({
+							level: "info",
+							event: "mission-resume-started",
+							missionId,
+						});
+						metric("runtime.mission.resume.started", 1, { missionId });
+						void mission.waitForCompletion().catch((error: unknown) => {
+							log({
+								level: "error",
+								event: "mission-resume-failed",
+								missionId,
+								error,
+							});
+							metric("runtime.mission.resume.failed", 1, { missionId });
+						});
+					} catch (error) {
+						log({
+							level: "error",
+							event: "mission-resume-failed",
+							missionId,
+							error,
+						});
+						metric("runtime.mission.resume.failed", 1, { missionId });
+					}
+				}
+
+				log({ level: "info", event: "tick-completed" });
+				return true;
+			} catch (error) {
+				log({ level: "error", event: "tick-failed", error });
+				metric("runtime.tick.failed", 1);
+				return false;
+			} finally {
+				tickInFlight = undefined;
+			}
+		})();
+
+		return tickInFlight;
 	};
 
 	const runtime: CommanderRuntime = {
 		commander,
 		identity,
-		taskQueue,
-		pollIntervalMs,
-		batchSize,
-		leaseTimeoutMs,
+		isTickRunning: () => tickInFlight !== undefined,
 		start: async () => {
 			if (running) {
 				return;
@@ -216,29 +255,26 @@ export function createCommanderRuntime(
 			await commander.waitUntilReady();
 			running = true;
 			stopping = false;
+			await scheduleStartupStartAtTicks();
 			log({ level: "info", event: "runtime-started" });
-			loop = runLoop();
+			await tick();
 		},
 		stop: async () => {
-			if (!running && !loop) {
+			if (!running && !tickInFlight) {
 				return;
 			}
 			stopping = true;
 			running = false;
-			if (sleepTimer) {
-				clearTimeout(sleepTimer);
-				sleepTimer = undefined;
+			clearNextTickTimer();
+			if (tickInFlight) {
+				await tickInFlight;
 			}
-			wakeSleep?.();
-			wakeSleep = undefined;
-			await loop;
-			loop = undefined;
-			await adapter?.releaseRuntimeClaims?.(identity, new Date());
-			log({ level: "info", event: "claims-released" });
-			metric("runtime.claims.released", 1);
 			commander.close();
 			log({ level: "info", event: "runtime-stopped" });
 		},
+		tick,
+		setNextTickAt,
+		setNextTickIn,
 	};
 
 	return runtime;

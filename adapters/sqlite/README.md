@@ -2,7 +2,7 @@
 
 `@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package.
 
-It remains experimental and is not the current reference v1 durable backend.
+It is one of the supported MVP adapters for Mission Control v1.
 
 It provides:
 
@@ -13,11 +13,7 @@ It provides:
 
 ## Requirement
 
-This package relies on Node’s built-in experimental SQLite support, so SQLite-based runs use:
-
-```bash
-node --experimental-sqlite ...
-```
+This package relies on Node's built-in SQLite module (`node:sqlite`) on Node.js 24+.
 
 ## Example
 
@@ -43,4 +39,4 @@ await mission.start({
 
 - This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
 - If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.
-- It remains behind the Postgres adapter for v1 because it is still `private` and depends on Node's experimental SQLite runtime support.
+- It persists mission state and recovery coordination, but external side effects remain at-least-once unless your application code is idempotent.

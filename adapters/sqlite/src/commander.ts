@@ -1,5 +1,6 @@
 import {
 	Commander,
+	type CommanderPersistenceAdapter,
 	type CommanderCreateOptions,
 	type CommanderOptions,
 	createEngineRuntime,
@@ -10,6 +11,7 @@ import {
 	type MissionHandle,
 	type MissionInspection,
 	type MissionSnapshot,
+	cancelRuntime,
 	recoverRuntime,
 	signalRuntime,
 	startRuntime,
@@ -20,6 +22,33 @@ import { SQLiteStore } from "./store.ts";
 
 export interface SQLiteCommanderOptions extends CommanderOptions {
 	databasePath: string;
+}
+
+export interface SQLitePersistenceAdapter
+	extends CommanderPersistenceAdapter {
+	listIncompleteMissionIds(): string[];
+	listStartAtEntries(): Array<{ missionId: string; startAt: string }>;
+}
+
+export function createSqlitePersistenceAdapter(
+	options: Pick<SQLiteCommanderOptions, "databasePath">,
+): SQLitePersistenceAdapter {
+	const store = SQLiteStore.open({ databasePath: options.databasePath });
+	return {
+		bootstrap: () => {},
+		saveInspection: (inspection) => {
+			store.saveInspection(inspection);
+		},
+		loadInspection: (missionId) => store.loadInspection(missionId),
+		listWaitingSnapshots: () => store.listWaitingSnapshots(),
+		listScheduledSnapshots: () => store.listScheduledSnapshots(),
+		listRecoverableInspections: () => store.listRecoverableInspections(),
+		listIncompleteMissionIds: () => store.listIncompleteMissionIds(),
+		listStartAtEntries: () => store.listStartAtEntries(),
+		close: () => {
+			store.close();
+		},
+	};
 }
 
 export class SQLiteCommander extends Commander {
@@ -80,6 +109,46 @@ export class SQLiteCommander extends Commander {
 		this.runtimes.set(missionId, runtime);
 		void recoverRuntime(runtime);
 		return this.createHandle(runtime as EngineRuntime);
+	}
+
+	public async start<M extends MissionDefinition>(
+		definitionOrName: M | string,
+		input: M["context"]["events"]["start"]["input"],
+		options: CommanderCreateOptions = {},
+	): Promise<MissionHandle<M>> {
+		this.ensureOpen();
+		const definition =
+			typeof definitionOrName === "string"
+				? (this.getRequiredMission(definitionOrName) as M)
+				: definitionOrName;
+		const handle = this.createMission(definition, options);
+		await handle.start(input);
+		return handle;
+	}
+
+	public override async cancelMission(
+		missionId: string,
+		reason?: string,
+	): Promise<MissionSnapshot> {
+		this.ensureOpen();
+		let runtime = this.runtimes.get(missionId);
+		if (!runtime) {
+			const inspection = this.store.loadInspection(missionId);
+			if (!inspection) {
+				throw new Error(`Mission "${missionId}" was not found.`);
+			}
+			const definition = this.getRegisteredMission(
+				inspection.snapshot.missionName,
+			);
+			if (!definition) {
+				throw new Error(
+					`Mission definition "${inspection.snapshot.missionName}" is not registered on this commander instance.`,
+				);
+			}
+			runtime = this.hydratePersistedRuntime(definition, inspection);
+			this.runtimes.set(missionId, runtime);
+		}
+		return cancelRuntime(runtime, reason);
 	}
 
 	public override async loadMission(
@@ -166,6 +235,10 @@ export class SQLiteCommander extends Commander {
 			signal: async (eventName, input) => {
 				this.ensureOpen();
 				await signalRuntime(runtime, eventName, input);
+			},
+			cancel: async (reason) => {
+				this.ensureOpen();
+				return cancelRuntime(runtime, reason);
 			},
 			inspect: () => inspectRuntime(runtime),
 			getHistory: () => inspectRuntime(runtime).history,

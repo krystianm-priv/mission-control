@@ -4,7 +4,7 @@
 
 Use this file as the default operating manual for coding agents working in this repository.
 
-Mission Control is a Node.js 24+ TypeScript workflow runtime for long-lived mission flows. The repository is now organized around publishable source-first packages, a runtime-neutral core, explicit adapters, and a Postgres-backed pilot production runtime.
+Mission Control is a Node.js 24+ TypeScript workflow runtime for long-lived mission flows. The repository is now organized around publishable source-first packages, a runtime-neutral core, explicit adapters, and a single-instance MVP runtime model.
 
 ## Source Of Truth
 
@@ -28,24 +28,28 @@ Do not rely on removed planning files or old claims from stale diffs. If docs an
 Primary package areas:
 
 - `core`: mission DSL, shared engine, contracts, validation, retry/timer primitives, and runtime-neutral durable contracts.
-- `runtime`: managed embedded runtime loop, polling, claiming, shutdown, logs, and metric hooks.
+- `runtime`: managed embedded runtime loop, startup recovery ticks, next-tick scheduling, shutdown, logs, and metric hooks.
 - `client`: mission-native application client helpers.
 - `testing`: shared test helpers.
-- `cli`: operator-facing inspection and cancellation command helpers.
 - `adapters/in-memory`: explicit local runtime adapter.
-- `adapters/postgres`: reference pilot production durable adapter.
-- `adapters/sqlite`: secondary durable adapter for comparison and iteration.
+- `adapters/sqlite`: durable MVP adapter for restart-safe mission persistence.
 - `examples/*`: runnable examples for public usage patterns.
 
 `core` must stay free of SQL, ORM, queue, and backend-specific logic. Durable backend behavior belongs in `adapters/*`.
 
 ## Runtime Semantics
 
-Mission Control is durable for mission state, waits, retries, timers, claims, cancellation records, and recovery coordination.
+Mission Control is durable for mission state, waits, retries, timers, cancellation records, and recovery coordination.
 
 External side effects are still at-least-once. Application code remains responsible for idempotency when a crash can happen between a side effect and the next persisted mission state.
 
-The Postgres runtime supports embedded multi-instance pilots through durable task records, history records, claims, lease expiry, and safe reclaim. Do not describe unsupported exactly-once side-effect behavior or broad distributed guarantees.
+The MVP runtime is single-instance and tick-driven. Do not describe unsupported exactly-once side-effect behavior, claim/lease orchestration, or broad distributed guarantees.
+
+## Human-Invoked Generation Policy
+
+- Agents must not run dependency install/update commands that generate or modify lockfiles.
+- Agents must not run file-generation commands that create generated artifacts (including lockfiles).
+- Any dependency update, lockfile change, or generated-file action must be invoked by a human.
 
 ## Execution Rules
 

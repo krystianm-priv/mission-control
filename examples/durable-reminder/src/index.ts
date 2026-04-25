@@ -1,24 +1,21 @@
 import {
-	createPgPersistenceAdapter,
-	type PgCommanderExecute,
-} from "@mission-control/adapter-postgres";
-import {
-	type CreateCommanderOptions,
-	createCommander,
-} from "@mission-control/core";
+	SQLiteCommander,
+	type SQLiteCommanderOptions,
+} from "@mission-control/adapter-sqlite";
 
 import { durableReminderMission } from "./mission-definition.ts";
 
 export interface CreateDurableReminderCommanderOptions
-	extends Omit<CreateCommanderOptions, "definitions" | "persistence"> {}
+	extends Omit<SQLiteCommanderOptions, "definitions"> {
+	databasePath: string;
+}
 
 export function createDurableReminderCommander(
-	execute: PgCommanderExecute,
-	options: CreateDurableReminderCommanderOptions = {},
+	options: CreateDurableReminderCommanderOptions,
 ) {
-	const commanderOptions: CreateCommanderOptions = {
+	const commanderOptions: SQLiteCommanderOptions = {
 		definitions: [durableReminderMission],
-		persistence: createPgPersistenceAdapter({ execute }),
+		databasePath: options.databasePath,
 	};
 
 	if (options.clock) {
@@ -29,5 +26,5 @@ export function createDurableReminderCommander(
 		commanderOptions.createMissionId = options.createMissionId;
 	}
 
-	return createCommander(commanderOptions);
+	return new SQLiteCommander(commanderOptions);
 }

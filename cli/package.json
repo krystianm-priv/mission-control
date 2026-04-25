@@ -1,7 +1,8 @@
 {
 	"name": "@mission-control/cli",
 	"version": "1.0.0-rc.1",
-	"description": "CLI formatting and inspection helpers for Mission Control.",
+	"description": "Unsupported placeholder package for future Mission Control CLI work.",
+	"private": true,
 	"type": "module",
 	"license": "MIT",
 	"engines": {
@@ -21,7 +22,6 @@
 		"README.md"
 	],
 	"dependencies": {
-		"@mission-control/adapter-postgres": "*",
 		"@mission-control/core": "*"
 	}
 }

@@ -50,54 +50,27 @@ class FakeClock implements EngineClock {
 	}
 }
 
-async function createPGliteHarness(): Promise<
-	| {
-			createExecute: () => Promise<(query: string) => Promise<unknown>>;
-			cleanup: () => Promise<void>;
-	  }
-	| undefined
-> {
-	try {
-		const mod = await import("@electric-sql/pglite");
-		const dir = mkdtempSync(
-			join(tmpdir(), "mission-control-durable-reminder-"),
-		);
-		const path = join(dir, "pgdata");
-		const openDbs: Array<{ close(): Promise<void> }> = [];
-		return {
-			createExecute: async () => {
-				const db = await mod.PGlite.create(path);
-				openDbs.push(db);
-				return (query: string) => db.exec(query);
-			},
-			cleanup: async () => {
-				for (const db of openDbs.splice(0)) {
-					await db.close();
-				}
-				rmSync(dir, { recursive: true, force: true });
-			},
-		};
-	} catch {
-		return undefined;
-	}
+function createSQLiteHarness(): { databasePath: string; cleanup: () => void } {
+	const dir = mkdtempSync(join(tmpdir(), "mission-control-durable-reminder-"));
+	return {
+		databasePath: join(dir, "missions.sqlite"),
+		cleanup: () => {
+			rmSync(dir, { recursive: true, force: true });
+		},
+	};
 }
 
-test("e2e: durable reminder happy path uses the Postgres adapter", async () => {
-	const harness = await createPGliteHarness();
-	if (!harness) {
-		return;
-	}
+test("e2e: durable reminder happy path uses the sqlite adapter", async () => {
+	const harness = createSQLiteHarness();
 
 	const clock = new FakeClock();
 
 	try {
-		const commander = createDurableReminderCommander(
-			await harness.createExecute(),
-			{
-				clock,
-				createMissionId: () => "reminder-1",
-			},
-		);
+		const commander = createDurableReminderCommander({
+			databasePath: harness.databasePath,
+			clock,
+			createMissionId: () => "reminder-1",
+		});
 		const mission = await commander.start(durableReminderMission, validInput);
 
 		assert.equal(mission.status, "waiting");
@@ -129,23 +102,18 @@ test("e2e: durable reminder happy path uses the Postgres adapter", async () => {
 
 		commander.close();
 	} finally {
-		await harness.cleanup();
+		harness.cleanup();
 	}
 });
 
 test("e2e: invalid start input fails fast", async () => {
-	const harness = await createPGliteHarness();
-	if (!harness) {
-		return;
-	}
+	const harness = createSQLiteHarness();
 
 	try {
-		const commander = createDurableReminderCommander(
-			await harness.createExecute(),
-			{
-				createMissionId: () => "reminder-2",
-			},
-		);
+		const commander = createDurableReminderCommander({
+			databasePath: harness.databasePath,
+			createMissionId: () => "reminder-2",
+		});
 
 		await assert.rejects(
 			() => commander.start(durableReminderMission, invalidInput as never),
@@ -158,26 +126,21 @@ test("e2e: invalid start input fails fast", async () => {
 		assert.equal(mission.status, "failed");
 		commander.close();
 	} finally {
-		await harness.cleanup();
+		harness.cleanup();
 	}
 });
 
 test("e2e: durable reminder sleep stays scheduled until the clock advances", async () => {
-	const harness = await createPGliteHarness();
-	if (!harness) {
-		return;
-	}
+	const harness = createSQLiteHarness();
 
 	const clock = new FakeClock();
 
 	try {
-		const commander = createDurableReminderCommander(
-			await harness.createExecute(),
-			{
-				clock,
-				createMissionId: () => "reminder-3",
-			},
-		);
+		const commander = createDurableReminderCommander({
+			databasePath: harness.databasePath,
+			clock,
+			createMissionId: () => "reminder-3",
+		});
 		const mission = await commander.start(durableReminderMission, validInput);
 
 		assert.equal(mission.status, "waiting");
@@ -197,6 +160,6 @@ test("e2e: durable reminder sleep stays scheduled until the clock advances", asy
 
 		commander.close();
 	} finally {
-		await harness.cleanup();
+		harness.cleanup();
 	}
 });

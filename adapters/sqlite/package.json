@@ -1,7 +1,6 @@
 {
 	"name": "@mission-control/adapter-sqlite",
 	"version": "1.0.0-rc.1",
-	"private": true,
 	"description": "SQLite-backed durable adapter for Mission Control.",
 	"type": "module",
 	"license": "MIT",

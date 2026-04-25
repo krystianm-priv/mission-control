@@ -140,4 +140,24 @@ export class SQLiteStore {
 			.map((row) => deserializeInspection(row))
 			.filter(isRecoverableMissionInspection);
 	}
+
+	public listIncompleteMissionIds(): string[] {
+		return (
+			this.db
+				.prepare(
+					"SELECT mission_id FROM mc_missions WHERE status IN ('waiting', 'running') ORDER BY updated_at ASC",
+				)
+				.all() as Array<{ mission_id: string }>
+		).map((row) => row.mission_id);
+	}
+
+	public listStartAtEntries(): Array<{ missionId: string; startAt: string }> {
+		return (
+			this.db
+				.prepare(
+					"SELECT mission_id, timer_due_at FROM mc_missions WHERE status = 'waiting' AND waiting_kind IN ('timer', 'retry') AND waiting_event_name LIKE 'start_at%' AND timer_due_at IS NOT NULL ORDER BY timer_due_at ASC",
+				)
+				.all() as Array<{ mission_id: string; timer_due_at: string }>
+		).map((row) => ({ missionId: row.mission_id, startAt: row.timer_due_at }));
+	}
 }
