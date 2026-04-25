@@ -22,6 +22,7 @@ import {
 } from "./engine.ts";
 import { parseMissionInput } from "./schema.ts";
 import type { MissionDefinition } from "./types.d.ts";
+import { CommanderError } from "./errors.ts";
 
 export interface CommanderOptions {
 	clock?: EngineClock;
@@ -258,6 +259,12 @@ export class ConfigurableCommander extends Commander {
 		}
 		this.registerMission(definition);
 		const missionId = options.missionId ?? this.createMissionId();
+		if (this.runtimes.has(missionId)) {
+			throw new CommanderError(
+				"MISSION_ALREADY_EXISTS",
+				`A mission with ID "${missionId}" already exists.`,
+			);
+		}
 		const runtime = this.createPersistedRuntime(definition, missionId);
 		this.runtimes.set(missionId, runtime);
 		return this.createHandle(runtime);

@@ -4,6 +4,7 @@ import {
 	type CommanderOptions,
 	type CommanderPersistenceAdapter,
 	cancelRuntime,
+		CommanderError,
 	createEngineRuntime,
 	type EngineRuntime,
 	hydrateEngineRuntime,
@@ -77,6 +78,12 @@ export class SQLiteCommander extends Commander {
 		this.ensureOpen();
 		this.registerMission(definition);
 		const missionId = options.missionId ?? this.createMissionId();
+		if (this.runtimes.has(missionId)) {
+			throw new CommanderError(
+				"MISSION_ALREADY_EXISTS",
+				`A mission with ID "${missionId}" already exists.`,
+			);
+		}
 		const runtime = this.createPersistedRuntime(definition, missionId);
 		this.runtimes.set(missionId, runtime);
 		this.store.saveInspection(inspectRuntime(runtime));

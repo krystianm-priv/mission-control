@@ -241,6 +241,7 @@ export const m = {
 			},
 			update(name, inputSchema, run) {
 				assertDefinitionExtensionNameAvailable(name, []);
+				assertMissionEventNameAvailableForUpdates(name, updates);
 				updates.push({
 					name,
 					inputSchema,

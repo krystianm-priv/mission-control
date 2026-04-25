@@ -57,4 +57,3 @@ This suite is intentionally strict and user-focused. Some assertions may fail if
 
 - Node.js 24+ runtime with built-in TypeScript stripping.
 - SQLite adapter is runnable in this repository.
-- No PostgreSQL adapter is currently shipped, so postgres parity is represented as a TODO test.

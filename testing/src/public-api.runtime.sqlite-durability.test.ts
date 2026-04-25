@@ -240,5 +240,3 @@ test(
 	await assert.rejects(() => commander.waitUntilReady(), /waiting metadata|sync|error/i);
 },
 );
-
-test.todo("postgres adapter parity: not runnable because repository does not ship a postgres commander adapter");
