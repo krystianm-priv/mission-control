@@ -67,6 +67,34 @@ test("PgStore persists and reloads mission inspections", async () => {
 		assert.ok(reloaded);
 		assert.equal(reloaded.snapshot.missionName, "demo");
 		assert.equal((await store.listWaitingSnapshots()).length, 1);
+		const claimedByA = await store.claimRuntimeTasks({
+			owner: "worker-a",
+			now: new Date("2100-01-01T00:00:00.000Z"),
+			leaseMs: 1000,
+			limit: 1,
+		});
+		assert.equal(claimedByA.length, 1);
+		assert.equal(claimedByA[0]?.missionId, "mission-1");
+		const claimedByB = await store.claimRuntimeTasks({
+			owner: "worker-b",
+			now: new Date("2100-01-01T00:00:00.500Z"),
+			leaseMs: 1000,
+			limit: 1,
+		});
+		assert.equal(claimedByB.length, 0);
+		const reclaimedByB = await store.claimRuntimeTasks({
+			owner: "worker-b",
+			now: new Date("2100-01-01T00:00:02.000Z"),
+			leaseMs: 1000,
+			limit: 1,
+		});
+		assert.equal(reclaimedByB.length, 1);
+		await store.requestCancellation("mission-1", "operator cancel");
+		assert.equal(await store.isCancellationRequested("mission-1"), true);
+		assert.equal(
+			(await store.loadInspection("mission-1"))?.snapshot.status,
+			"cancelled",
+		);
 	} finally {
 		await harness.db.close();
 		rmSync(harness.dir, { recursive: true, force: true });

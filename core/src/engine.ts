@@ -113,6 +113,12 @@ function settleCompletion(runtime: EngineRuntime): void {
 		return;
 	}
 
+	if (runtime.snapshot.status === "cancelled") {
+		runtime.completion.settled = true;
+		runtime.completion.resolve(runtime.snapshot);
+		return;
+	}
+
 	if (runtime.snapshot.status === "failed") {
 		runtime.completion.settled = true;
 		runtime.completion.reject(runtime.snapshot.error);
@@ -697,6 +703,48 @@ export async function signalRuntime(
 	} finally {
 		runtime.activeSignalToken = undefined;
 	}
+}
+
+export async function cancelRuntime(
+	runtime: EngineRuntime,
+	reason = "Mission cancelled.",
+): Promise<MissionSnapshot> {
+	if (
+		runtime.snapshot.status === "completed" ||
+		runtime.snapshot.status === "failed" ||
+		runtime.snapshot.status === "cancelled"
+	) {
+		return structuredClone(runtime.snapshot);
+	}
+
+	const cancelledAt = runtime.clock.now().toISOString();
+	runtime.activeSignalToken = undefined;
+	runtime.scheduledToken = undefined;
+	for (const timer of runtime.timers) {
+		if (timer.status === "scheduled") {
+			timer.status = "cancelled";
+		}
+	}
+	appendHistory(runtime, {
+		type: "mission-cancellation-requested",
+		at: cancelledAt,
+		details: { reason },
+	});
+	runtime.snapshot.status = "cancelled";
+	runtime.snapshot.waiting = undefined;
+	runtime.snapshot.error = {
+		message: reason,
+		at: cancelledAt,
+		code: "MISSION_CANCELLED",
+	};
+	appendHistory(runtime, {
+		type: "mission-cancelled",
+		at: cancelledAt,
+		details: { reason },
+	});
+	await persistRuntime(runtime);
+	settleCompletion(runtime);
+	return structuredClone(runtime.snapshot);
 }
 
 export function inspectRuntime(runtime: EngineRuntime): MissionInspection {

@@ -6,6 +6,10 @@ import { POSTGRES_SCHEMA_STATEMENTS } from "./schema.ts";
 test("postgres schema includes mission table and indexes", () => {
 	const ddl = POSTGRES_SCHEMA_STATEMENTS.join("\n");
 	assert.match(ddl, /CREATE TABLE IF NOT EXISTS mc_missions/);
+	assert.match(ddl, /CREATE TABLE IF NOT EXISTS mc_runtime_tasks/);
+	assert.match(ddl, /CREATE TABLE IF NOT EXISTS mc_runtime_history/);
+	assert.match(ddl, /CREATE TABLE IF NOT EXISTS mc_runtime_cancellations/);
 	assert.match(ddl, /CREATE INDEX IF NOT EXISTS mc_missions_status_idx/);
 	assert.match(ddl, /CREATE INDEX IF NOT EXISTS mc_missions_waiting_idx/);
+	assert.match(ddl, /CREATE INDEX IF NOT EXISTS mc_runtime_tasks_claim_idx/);
 });

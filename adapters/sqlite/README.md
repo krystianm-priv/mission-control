@@ -1,6 +1,6 @@
 # @mission-control/adapter-sqlite
 
-`@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package in this pre-v1 repository.
+`@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package.
 
 It remains experimental and is not the current reference v1 durable backend.
 

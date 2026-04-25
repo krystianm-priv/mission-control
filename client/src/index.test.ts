@@ -69,5 +69,35 @@ test("client starts missions and uses additive query and update handlers", async
 	await handle.signal("approve", { approvedBy: "ops" });
 	await handle.result();
 
-	runtime.stop();
+	await runtime.stop();
+});
+
+test("client exposes operator inspection and cancellation helpers", async () => {
+	const mission = m
+		.define("client-cancel")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.end();
+	const runtime = createCommanderRuntime({
+		definitions: [mission],
+		createMissionId: () => "client-cancel-1",
+	});
+	await runtime.start();
+	const client = createCommanderClient({ runtime });
+	await client.startMission(mission, { id: "123" });
+
+	assert.equal((await client.listWaitingMissions()).length, 1);
+	assert.ok(await client.inspectMission("client-cancel-1"));
+	const snapshot = await client.cancelMission(
+		"client-cancel-1",
+		"operator cancel",
+	);
+
+	assert.equal(snapshot.status, "cancelled");
+	await runtime.stop();
 });

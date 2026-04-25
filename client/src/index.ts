@@ -2,6 +2,7 @@ import type {
 	CommanderCreateOptions,
 	MissionDefinition,
 	MissionHandle,
+	MissionInspection,
 	MissionSnapshot,
 } from "@mission-control/core";
 import type { CommanderRuntime } from "@mission-control/runtime";
@@ -15,6 +16,7 @@ export interface CommanderClientHandle<M extends MissionDefinition> {
 	signal: MissionHandle<M>["signal"];
 	query(name: string): Promise<unknown>;
 	update(name: string, input: unknown): Promise<unknown>;
+	cancel(reason?: string): Promise<MissionSnapshot>;
 	result(): Promise<MissionSnapshot>;
 	inspect: MissionHandle<M>["inspect"];
 }
@@ -28,6 +30,10 @@ export interface CommanderClient {
 	getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<CommanderClientHandle<M> | undefined>;
+	cancelMission(missionId: string, reason?: string): Promise<MissionSnapshot>;
+	inspectMission(missionId: string): Promise<MissionInspection | undefined>;
+	listWaitingMissions(): Promise<MissionSnapshot[]>;
+	listScheduledMissions(): Promise<MissionSnapshot[]>;
 }
 
 function wrapHandle<M extends MissionDefinition>(
@@ -48,6 +54,7 @@ function wrapHandle<M extends MissionDefinition>(
 			}
 			return handle.update(name, input);
 		},
+		cancel: (reason) => handle.cancel(reason),
 		result: async () => {
 			if (handle.result) {
 				return handle.result();
@@ -74,5 +81,11 @@ export function createCommanderClient(
 			const handle = await options.runtime.commander.getMission(missionId);
 			return handle ? wrapHandle(handle) : undefined;
 		},
+		cancelMission: (missionId, reason) =>
+			options.runtime.commander.cancelMission(missionId, reason),
+		inspectMission: (missionId) =>
+			options.runtime.commander.loadMission(missionId),
+		listWaitingMissions: () => options.runtime.commander.listWaiting(),
+		listScheduledMissions: () => options.runtime.commander.listScheduled(),
 	};
 }

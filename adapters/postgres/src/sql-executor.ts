@@ -1,6 +1,9 @@
 export type SqlRow = Record<string, unknown>;
 
-export type PgCommanderExecute = (query: string) => Promise<unknown> | unknown;
+export type PgCommanderExecute = (
+	query: string,
+	params?: readonly unknown[],
+) => Promise<unknown> | unknown;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
@@ -13,15 +16,17 @@ function hasRows(value: unknown): value is { rows: SqlRow[] } {
 export async function executeStatement(
 	execute: PgCommanderExecute,
 	query: string,
+	params?: readonly unknown[],
 ): Promise<void> {
-	await execute(query);
+	await execute(query, params);
 }
 
 export async function executeRows(
 	execute: PgCommanderExecute,
 	query: string,
+	params?: readonly unknown[],
 ): Promise<SqlRow[]> {
-	const result = await execute(query);
+	const result = await execute(query, params);
 
 	if (Array.isArray(result)) {
 		const withRows = [...result].reverse().find((entry) => hasRows(entry));

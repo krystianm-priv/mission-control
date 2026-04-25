@@ -6,24 +6,19 @@ It is being built in the same broad problem space as tools like Temporal and DBO
 
 ## Current status
 
-Mission Control is currently **pre-v1**.
+Mission Control is a pilot-ready v1 runtime for controlled production use.
 
-The repository already contains useful pieces:
+The repository now contains:
 
 - a typed mission definition DSL
 - a shared execution engine
 - an explicit in-memory runtime
-- experiments around durable persistence
-- tests and examples for waits, signals, timers, and retries
+- a managed embedded runtime loop
+- a Postgres durable adapter with task records, history records, claims, lease expiry, cancellation records, and restart recovery
+- client and CLI helpers for starting, inspecting, listing, signalling, updating, and cancelling missions
+- tests and examples for waits, signals, timers, retries, recovery, claims, and cancellation
 
-But this does **not** yet mean:
-
-- v1 is complete
-- durability guarantees are fully production-grade
-- the publishable package story is final
-- the current repo structure is the final architecture
-
-This repository should be treated as an active productization effort, not a finished release candidate.
+Pilot-ready means Mission Control is suitable for limited production rollouts where operators understand the runtime model and application code makes external side effects idempotent.
 
 ## Product direction
 
@@ -96,7 +91,7 @@ That choice is based on the current repository state:
 
 - `@mission-control/adapter-postgres` is already shaped like a publishable package
 - its publishable tarball is now scoped to runtime source plus README instead of test fixtures
-- it uses an explicit `execute(query)` boundary instead of relying on Node experimental runtime features
+- it uses an explicit `execute(query, params?)` boundary instead of relying on Node experimental runtime features
 - the durable example and release-pack flow point at the Postgres adapter
 - restart-recovery coverage for signals, sleep timers, and retry backoff already exists for it
 
@@ -137,31 +132,15 @@ Today the repo already demonstrates:
 
 That makes it a strong foundation.
 
-## What still needs to become true for v1
+## Pilot production limits
 
-Mission Control v1 is only real once all of the following are true:
+The pilot-ready runtime still has explicit limits:
 
-- package naming and workspace structure match the adapter-oriented architecture
-- the durable adapter contract is clearly defined in `core`
-- at least one durable adapter is genuinely publishable
-- restart-safe recovery for signals, timers, and retries is proven for that adapter
-- examples compile against the shared `createCommander(...)` API and the reference durable adapter
-- docs stop overclaiming current maturity
-- examples, exports, and release scripts match the real package graph
-
-## Honest v1 limits
-
-The first real v1 will likely still have limits.
-
-Acceptable likely limits include:
-
-- single-process oriented recovery
-- no workflow versioning for already-running missions
-- only one production-grade durable adapter
-- some idempotency responsibility remaining with application code
-- no multi-worker claim / lease system yet
-
-Those are acceptable as long as they are stated clearly and not hidden behind inflated claims.
+- Postgres is the only pilot production backend.
+- Embedded runtimes coordinate through Postgres task claims and leases; Mission Control is not a multi-cluster orchestration system.
+- External side effects are at-least-once unless application code supplies idempotency.
+- Workflow versioning for already-running missions is not included.
+- There is no web dashboard.
 
 ## Current execution guarantees
 
@@ -169,9 +148,12 @@ Today, Mission Control is explicit about waits, retries, timers, and inspection 
 
 What the current runtime does guarantee:
 
-- mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, and terminal failures
+- mission inspection captures the durable state needed to recover waiting signals, sleep timers, retry backoff, cancellation, and terminal failures
+- the Postgres adapter records durable task rows, history rows, cancellation rows, and claim leases for embedded multi-instance coordination
+- claimed Postgres tasks are not claimed by another runtime while their lease is valid
+- expired Postgres leases can be reclaimed after a runtime crash
 - recovery can rehydrate waiting and running missions from persisted inspection state
-- retries, timer wakeups, and signal handling are explicit in mission history and inspection output
+- retries, timer wakeups, signal handling, updates, and cancellations are explicit in mission history and inspection output
 - additive mission queries and updates can be registered on definitions and executed through mission handles
 
 What the current runtime does not guarantee:
@@ -184,6 +166,30 @@ The practical rule for v1 is:
 
 - treat Mission Control as durable for mission state and recovery coordination
 - treat application side effects as at-least-once unless your own code makes them idempotent
+
+## Operator basics
+
+`@mission-control/runtime` exposes a managed embedded runtime with:
+
+- `identity`
+- `pollIntervalMs`
+- `batchSize`
+- `leaseTimeoutMs`
+- structured logger hooks
+- metric hooks
+
+`@mission-control/cli` provides JSON operator commands:
+
+```bash
+mission-control list --waiting
+mission-control list --scheduled
+mission-control inspect <missionId>
+mission-control cancel <missionId> "operator reason"
+```
+
+The CLI does not own a database client. Set `MISSION_CONTROL_POSTGRES_EXECUTE_MODULE` to a local module that exports `execute(query, params?)`.
+
+For rollback or shutdown, stop embedded runtimes gracefully. In-flight claimed work either completes or is released by shutdown; if a process crashes, another runtime may reclaim work after the lease expires.
 
 ## Non-goals for v1
 

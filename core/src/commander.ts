@@ -17,6 +17,7 @@ import {
 	recoverRuntime,
 	signalRuntime,
 	startRuntime,
+	cancelRuntime,
 	waitForCompletion,
 } from "./engine.ts";
 import { parseMissionInput } from "./schema.ts";
@@ -62,6 +63,10 @@ export interface CommanderPersistenceAdapter {
 	listRecoverableInspections():
 		| Promise<RecoverableMissionInspection[]>
 		| RecoverableMissionInspection[];
+	requestCancellation?(
+		missionId: string,
+		reason?: string,
+	): Promise<void> | void;
 	close?(): void;
 }
 
@@ -147,6 +152,11 @@ export abstract class Commander {
 	public abstract getMission<M extends MissionDefinition>(
 		missionId: string,
 	): Promise<MissionHandle<M> | undefined>;
+
+	public abstract cancelMission(
+		missionId: string,
+		reason?: string,
+	): Promise<MissionSnapshot>;
 
 	public abstract loadMission(
 		missionId: string,
@@ -300,6 +310,32 @@ export class ConfigurableCommander extends Commander {
 		return this.createHandle(runtime as EngineRuntime);
 	}
 
+	public override async cancelMission(
+		missionId: string,
+		reason?: string,
+	): Promise<MissionSnapshot> {
+		await this.ensureReady();
+		let runtime = this.runtimes.get(missionId);
+		if (!runtime) {
+			const inspection = await this.persistence.loadInspection(missionId);
+			if (!inspection) {
+				throw new Error(`Mission "${missionId}" was not found.`);
+			}
+			const definition = this.getRegisteredMission(
+				inspection.snapshot.missionName,
+			);
+			if (!definition) {
+				throw new Error(
+					`Mission definition "${inspection.snapshot.missionName}" is not registered on this commander instance.`,
+				);
+			}
+			runtime = this.hydratePersistedRuntime(definition, inspection);
+			this.runtimes.set(missionId, runtime);
+		}
+		await this.persistence.requestCancellation?.(missionId, reason);
+		return cancelRuntime(runtime, reason);
+	}
+
 	public override async loadMission(
 		missionId: string,
 	): Promise<MissionInspection | undefined> {
@@ -444,7 +480,8 @@ export class ConfigurableCommander extends Commander {
 				await this.ensureReady();
 				if (
 					runtime.snapshot.status === "completed" ||
-					runtime.snapshot.status === "failed"
+					runtime.snapshot.status === "failed" ||
+					runtime.snapshot.status === "cancelled"
 				) {
 					throw new Error(
 						`Mission "${runtime.snapshot.missionId}" is already terminal and cannot accept updates.`,
@@ -475,6 +512,14 @@ export class ConfigurableCommander extends Commander {
 				});
 				await runtime.persist?.(runtime);
 				return output;
+			},
+			cancel: async (reason) => {
+				await this.ensureReady();
+				await this.persistence.requestCancellation?.(
+					runtime.snapshot.missionId,
+					reason,
+				);
+				return cancelRuntime(runtime, reason);
 			},
 			inspect: () => inspectRuntime(runtime),
 			getHistory: () => inspectRuntime(runtime).history,

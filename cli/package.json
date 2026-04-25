@@ -12,12 +12,16 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
+	"bin": {
+		"mission-control": "./src/index.ts"
+	},
 	"files": [
 		"src",
 		"!src/**/*.test.ts",
 		"README.md"
 	],
 	"dependencies": {
+		"@mission-control/adapter-postgres": "*",
 		"@mission-control/core": "*"
 	}
 }

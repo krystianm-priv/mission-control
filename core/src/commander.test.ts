@@ -372,3 +372,37 @@ test("mission handles support additive queries and updates", async () => {
 		0,
 	);
 });
+
+test("mission handles and commander cancel waiting missions", async () => {
+	const mission = m
+		.define("cancel-demo")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.end();
+
+	const commander = createCommander({
+		definitions: [mission],
+		createMissionId: () => "mission-cancel",
+	});
+	const handle = await commander.start(mission, { id: "123" });
+
+	const snapshot = await handle.cancel("operator requested rollback");
+
+	assert.equal(snapshot.status, "cancelled");
+	assert.equal(handle.status, "cancelled");
+	assert.equal(handle.inspect().snapshot.waiting, undefined);
+	assert.equal(handle.inspect().snapshot.error?.code, "MISSION_CANCELLED");
+	assert.equal(
+		handle.getHistory().some((entry) => entry.type === "mission-cancelled"),
+		true,
+	);
+	await assert.rejects(
+		() => handle.signal("approve", { approvedBy: "ops" }),
+		/not waiting/i,
+	);
+});

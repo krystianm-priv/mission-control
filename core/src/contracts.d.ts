@@ -5,7 +5,8 @@ export type MissionStatus =
 	| "running"
 	| "waiting"
 	| "completed"
-	| "failed";
+	| "failed"
+	| "cancelled";
 
 /**
  * idle: mission exists but its start event has not run.
@@ -13,6 +14,7 @@ export type MissionStatus =
  * waiting: the mission is paused on an external signal, sleep timer, or retry backoff timer.
  * completed: the mission reached its terminal end node successfully.
  * failed: the mission reached a terminal error state.
+ * cancelled: the mission was explicitly cancelled before normal completion.
  */
 export interface MissionSnapshot {
 	missionId: string;
@@ -97,6 +99,8 @@ export interface MissionHistoryRecord {
 		| "signal-received"
 		| "timer-scheduled"
 		| "timer-fired"
+		| "mission-cancellation-requested"
+		| "mission-cancelled"
 		| "mission-completed"
 		| "mission-failed";
 	at: string;
@@ -156,6 +160,7 @@ export interface MissionHandle<M extends MissionDefinition> {
 	): Promise<void>;
 	query?(name: string): Promise<unknown>;
 	update?(name: string, input: unknown): Promise<unknown>;
+	cancel(reason?: string): Promise<MissionSnapshot>;
 	inspect(): MissionInspection;
 	getHistory(): MissionHistoryRecord[];
 	result?(): Promise<MissionSnapshot>;
