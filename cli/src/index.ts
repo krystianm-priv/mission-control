@@ -17,7 +17,10 @@ export async function runMissionControlCli(
 	throw new Error("@mission-control/cli is unsupported in the v1 MVP build.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+	process.argv[1] &&
+	import.meta.url === pathToFileURL(process.argv[1]).href
+) {
 	try {
 		const output = await runMissionControlCli({
 			args: process.argv.slice(2),

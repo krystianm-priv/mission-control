@@ -1,8 +1,9 @@
 import {
 	Commander,
-	type CommanderPersistenceAdapter,
 	type CommanderCreateOptions,
 	type CommanderOptions,
+	type CommanderPersistenceAdapter,
+	cancelRuntime,
 	createEngineRuntime,
 	type EngineRuntime,
 	hydrateEngineRuntime,
@@ -11,7 +12,6 @@ import {
 	type MissionHandle,
 	type MissionInspection,
 	type MissionSnapshot,
-	cancelRuntime,
 	recoverRuntime,
 	signalRuntime,
 	startRuntime,
@@ -24,8 +24,7 @@ export interface SQLiteCommanderOptions extends CommanderOptions {
 	databasePath: string;
 }
 
-export interface SQLitePersistenceAdapter
-	extends CommanderPersistenceAdapter {
+export interface SQLitePersistenceAdapter extends CommanderPersistenceAdapter {
 	listIncompleteMissionIds(): string[];
 	listStartAtEntries(): Array<{ missionId: string; startAt: string }>;
 }

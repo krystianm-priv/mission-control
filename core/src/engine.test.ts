@@ -414,3 +414,34 @@ test("invalid signals leave the mission waiting for corrected input", async () =
 	assert.equal(runtime.snapshot.error, undefined);
 	assert.equal(runtime.signals.length, 0);
 });
+
+test("side effects can run before persistence failure is recorded", async () => {
+	let externalSideEffectCount = 0;
+	let persistCalls = 0;
+
+	const mission = m
+		.define("at-least-once-boundary")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.step("perform-side-effect", async () => {
+			externalSideEffectCount += 1;
+			return { persisted: false };
+		})
+		.end();
+
+	const runtime = createEngineRuntime(mission, "mission-at-least-once", {
+		persist: async () => {
+			persistCalls += 1;
+			if (persistCalls >= 5) {
+				throw new Error("persist failed after side effect");
+			}
+		},
+	});
+
+	await assert.rejects(() => startRuntime(runtime, { id: "123" }));
+	assert.equal(externalSideEffectCount, 1);
+	assert.equal(runtime.snapshot.status, "failed");
+	assert.match(runtime.snapshot.error?.message ?? "", /persist failed/);
+});

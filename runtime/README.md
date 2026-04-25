@@ -66,4 +66,11 @@ Current replacements:
 - single-instance execution with a one-tick-at-a-time guard
 - adapter-driven discovery of incomplete missions and persisted `start_at*` wakeup entries
 
+Old-to-new API mapping:
+
+- `pollIntervalMs` loop cadence -> `setNextTickAt(...)` or `setNextTickIn(...)`
+- `claimRuntimeTasks(...)` work discovery -> adapter `listIncompleteMissionIds(...)`
+- `releaseRuntimeClaims(...)` shutdown cleanup -> `stop()` timer cleanup + in-flight tick drain
+- claim ownership lease semantics -> `isTickRunning()` single-flight tick guard
+
 If your previous integration used claim APIs, migrate by moving wake-up decisions to adapter persistence and scheduling the next runtime tick explicitly from application orchestration code.

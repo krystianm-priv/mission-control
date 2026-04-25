@@ -51,6 +51,12 @@ The MVP runtime is single-instance and tick-driven. Do not describe unsupported 
 - Agents must not run file-generation commands that create generated artifacts (including lockfiles).
 - Any dependency update, lockfile change, or generated-file action must be invoked by a human.
 
+## Versioning And Release Notes
+
+- When public package APIs or runtime semantics change, update release notes/changelog entries in the same change set.
+- Keep package versioning decisions explicit and human-approved; do not silently bump versions.
+- Ensure published package metadata (`main`, `types`, `exports`, `files`, `engines`) stays consistent across supported packages.
+
 ## Execution Rules
 
 - Keep diffs tight and scoped.

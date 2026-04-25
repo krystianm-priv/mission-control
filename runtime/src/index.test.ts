@@ -20,7 +20,10 @@ interface AdapterState {
 function createAdapter(state: AdapterState): RuntimeTickAdapter {
 	return {
 		saveInspection: (inspection) => {
-			state.inspections.set(inspection.snapshot.missionId, structuredClone(inspection));
+			state.inspections.set(
+				inspection.snapshot.missionId,
+				structuredClone(inspection),
+			);
 		},
 		loadInspection: (missionId) => {
 			const inspection = state.inspections.get(missionId);
@@ -46,9 +49,7 @@ function createAdapter(state: AdapterState): RuntimeTickAdapter {
 			[...state.inspections.values()]
 				.map((inspection) => structuredClone(inspection))
 				.filter(
-					(
-						inspection,
-					): inspection is RecoverableMissionInspection =>
+					(inspection): inspection is RecoverableMissionInspection =>
 						inspection.snapshot.status === "waiting" ||
 						inspection.snapshot.status === "running",
 				),
@@ -188,4 +189,35 @@ test("tick resumes incomplete missions without awaiting mission completion", asy
 	assert.equal(triggered, true);
 
 	await runtime.stop();
+});
+
+test("stop waits for in-flight tick before closing runtime", async () => {
+	let release: (() => void) | undefined;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+
+	const adapter = createAdapter({
+		inspections: new Map(),
+		incompleteIds: [],
+		startAtEntries: [],
+	});
+
+	const runtime = createCommanderRuntime({ adapter, identity: "runtime-stop" });
+	await runtime.start();
+
+	adapter.listIncompleteMissionIds = async () => {
+		await gate;
+		return [];
+	};
+
+	const inFlight = runtime.tick();
+	const stopping = runtime.stop();
+	await Promise.resolve();
+	assert.equal(runtime.isTickRunning(), true);
+
+	release?.();
+	await inFlight;
+	await stopping;
+	assert.equal(runtime.isTickRunning(), false);
 });

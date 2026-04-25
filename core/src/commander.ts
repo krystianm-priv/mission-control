@@ -8,6 +8,7 @@ import type {
 	WaitingMissionSnapshot,
 } from "./contracts.d.ts";
 import {
+	cancelRuntime,
 	createEngineRuntime,
 	type EngineClock,
 	type EngineRuntime,
@@ -17,7 +18,6 @@ import {
 	recoverRuntime,
 	signalRuntime,
 	startRuntime,
-	cancelRuntime,
 	waitForCompletion,
 } from "./engine.ts";
 import { parseMissionInput } from "./schema.ts";

@@ -13,9 +13,9 @@ export interface RuntimeStartAtEntry {
 
 export interface RuntimeTickAdapter extends CommanderPersistenceAdapter {
 	listIncompleteMissionIds?(now?: Date): Promise<string[]> | string[];
-	listStartAtEntries?(now?: Date):
-		| Promise<RuntimeStartAtEntry[]>
-		| RuntimeStartAtEntry[];
+	listStartAtEntries?(
+		now?: Date,
+	): Promise<RuntimeStartAtEntry[]> | RuntimeStartAtEntry[];
 }
 
 export interface CommanderRuntimeLogEvent {
@@ -140,7 +140,11 @@ export function createCommanderRuntime(
 		if (!inspections) {
 			return [];
 		}
-		return [...new Set(inspections.map((inspection) => inspection.snapshot.missionId))];
+		return [
+			...new Set(
+				inspections.map((inspection) => inspection.snapshot.missionId),
+			),
+		];
 	};
 
 	const scheduleStartupStartAtTicks = async (): Promise<void> => {

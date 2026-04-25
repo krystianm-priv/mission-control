@@ -19,6 +19,19 @@ Mission Control MVP is intentionally narrow:
 - side-effect model: at-least-once unless application code provides idempotency
 - operator CLI: currently unsupported for MVP
 
+## MVP package status
+
+| Package | Status | Notes |
+| --- | --- | --- |
+| `@mission-control/core` | Supported | Mission DSL, engine, contracts |
+| `@mission-control/runtime` | Supported | Single-instance tick runtime |
+| `@mission-control/client` | Supported | Runtime-owned mission client helpers |
+| `@mission-control/testing` | Supported | Shared testing helpers |
+| `@mission-control/in-memory-commander` | Supported | Local/in-memory adapter surface |
+| `@mission-control/adapter-sqlite` | Supported | Durable sqlite adapter surface |
+| `@mission-control/cli` | Unsupported/private | Placeholder only in MVP |
+| `examples/*` | Private examples | Reference usage patterns, not published APIs |
+
 ## Repository architecture
 
 ### `@mission-control/core`
@@ -112,6 +125,16 @@ Migration checklist:
 3. Use `setNextTickAt(...)` or `setNextTickIn(...)` from application code when deferred work should trigger another tick window.
 4. Keep retry/timer durability in adapter persistence; do not attempt to recreate multi-worker claim ownership logic.
 5. Update operational expectations: one process, one tick at a time, no automatic tick chaining.
+
+## Release process
+
+Release work for MVP is intentionally explicit and human-driven.
+
+1. Run validation: `npm run release:check`
+2. Verify package tarballs: `npm run release:pack`
+3. Ensure docs and changelog are updated for API/semantics changes.
+4. Human operators perform dependency updates, generated-file actions, and lockfile modifications.
+5. Human operators run publish commands after dry-run verification.
 
 ## Non-goals for MVP
 

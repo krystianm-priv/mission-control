@@ -4,7 +4,19 @@
 	"description": "SQLite-backed durable adapter for Mission Control.",
 	"type": "module",
 	"license": "MIT",
+	"engines": {
+		"node": "^24"
+	},
 	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"files": [
+		"src",
+		"!src/**/*.test.ts",
+		"README.md"
+	],
 	"dependencies": {
 		"@mission-control/core": "*"
 	},
