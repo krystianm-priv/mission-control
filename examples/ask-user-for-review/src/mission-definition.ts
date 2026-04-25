@@ -42,10 +42,6 @@ export const askForReviewMission = m
 			id: ctx.events.start.output.recordId,
 			review: ctx.events["receive-review"].input,
 		});
-		console.log(
-			"Review record updated successfully. The review was:",
-			ctx.events["receive-review"].input,
-		);
 		return {};
 	})
 	.end();
