@@ -93,6 +93,14 @@ const compileTimeAssertions = () => {
 
 	// @ts-expect-error unknown signal event names are not accepted
 	void createHandle.signal("unknown-event", { approvedBy: "ops" });
+	// @ts-expect-error start is not an external signal event
+	void createHandle.signal("start", { orderId: "o-5", amount: 40 });
+	// @ts-expect-error step names are not external signal events
+	void createHandle.signal("finalize", { approvedBy: "ops" });
+	// @ts-expect-error update names are not external signal events
+	void createHandle.signal("set-note", { note: "hello" });
+	// @ts-expect-error query names are not external signal events
+	void createHandle.signal("current-order", {});
 	// @ts-expect-error signal payload must match the mission input schema
 	void createHandle.signal("approve", { approvedBy: 123 });
 	// @ts-expect-error start payload must match inferred start input type

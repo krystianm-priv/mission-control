@@ -116,9 +116,11 @@ export type ExternalEventNames<M extends MissionDefinition> = {
 	[K in keyof M["context"]["events"]]: M["context"]["events"][K] extends {
 		input: unknown;
 	}
-		? M["context"]["events"][K] extends { output: unknown }
+		? K extends "start"
 			? never
-			: K
+			: M["context"]["events"][K] extends { output: unknown }
+				? never
+				: K
 		: never;
 }[keyof M["context"]["events"]];
 

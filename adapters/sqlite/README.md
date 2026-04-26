@@ -2,8 +2,7 @@
 
 `@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package.
 
-It is a preview MVP adapter because it relies on Node's built-in `node:sqlite`
-module, which is not a Stability 2 Node.js API yet.
+It is the durable production adapter for the v1 single-instance runtime model.
 
 It provides:
 
@@ -15,8 +14,7 @@ It provides:
 ## Requirement
 
 This package relies on Node's built-in SQLite module (`node:sqlite`) on Node.js
-24+. Treat the SQLite backend as preview infrastructure until Node marks
-`node:sqlite` stable.
+24+. Node.js 25+ is recommended.
 
 ## Example
 

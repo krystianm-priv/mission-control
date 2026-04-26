@@ -15,11 +15,37 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = {
 	backoffMultiplier: 1,
 };
 
+function assertFiniteNonNegativeNumber(name: string, value: number): void {
+	if (!Number.isFinite(value) || value < 0) {
+		throw new Error(`${name} must be a finite non-negative number.`);
+	}
+}
+
 export function normalizeRetryPolicy(options?: RetryOptions): RetryPolicy {
-	return {
+	const retryPolicy = {
 		...DEFAULT_RETRY_POLICY,
 		...options?.retry,
 	};
+
+	if (
+		!Number.isInteger(retryPolicy.maxAttempts) ||
+		retryPolicy.maxAttempts <= 0
+	) {
+		throw new Error("maxAttempts must be a finite positive integer.");
+	}
+	assertFiniteNonNegativeNumber(
+		"initialIntervalMs",
+		retryPolicy.initialIntervalMs,
+	);
+	assertFiniteNonNegativeNumber(
+		"backoffMultiplier",
+		retryPolicy.backoffMultiplier,
+	);
+	if (retryPolicy.maxIntervalMs !== undefined) {
+		assertFiniteNonNegativeNumber("maxIntervalMs", retryPolicy.maxIntervalMs);
+	}
+
+	return retryPolicy;
 }
 
 export function getRetryDelayMs(

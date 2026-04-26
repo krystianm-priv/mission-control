@@ -1,6 +1,6 @@
 # Mission Control
 
-Mission Control is a Node.js 24+ TypeScript workflow / mission runtime for long-lived application flows.
+Mission Control is a Node.js TypeScript workflow / mission runtime for long-lived application flows.
 
 It targets a focused MVP with:
 
@@ -8,21 +8,17 @@ It targets a focused MVP with:
 - durable mission inspection state
 - explicit waits, retries, timers, and signals
 - single-instance runtime orchestration through ticks
-- an in-memory adapter and a SQLite preview adapter
+- an in-memory adapter and a durable SQLite adapter
 
 ## Current status
 
 Mission Control MVP is intentionally narrow:
 
 - available adapters: `@mission-control/in-memory-commander`, `@mission-control/adapter-sqlite`
+- runtime requirement: Node.js 24 minimum; Node.js 25+ recommended
 - runtime model: single-instance, tick-driven
 - side-effect model: at-least-once unless application code provides idempotency
-- source-first packages that run TypeScript directly on Node.js 24+
-
-`@mission-control/adapter-sqlite` is a preview durable adapter because it relies
-on Node's built-in `node:sqlite` module, which is not a Stability 2 API yet.
-The adapter is included for durable MVP usage, but its backend should be treated
-as release-candidate infrastructure until Node marks SQLite stable.
+- source code uses erasable TypeScript syntax only; npm publishing should use the human-run tsc build/release process
 
 ## MVP package status
 
@@ -33,7 +29,7 @@ as release-candidate infrastructure until Node marks SQLite stable.
 | `@mission-control/client` | Supported | Runtime-owned mission client helpers |
 | `@mission-control/testing` | Supported | Shared testing helpers |
 | `@mission-control/in-memory-commander` | Supported | Local/in-memory adapter surface |
-| `@mission-control/adapter-sqlite` | Preview | Durable SQLite adapter surface backed by `node:sqlite` |
+| `@mission-control/adapter-sqlite` | Supported | Durable SQLite adapter surface backed by `node:sqlite` |
 | `examples/*` | Private examples | Reference usage patterns, not published APIs |
 
 ## Repository architecture
@@ -101,6 +97,9 @@ Practical rule:
 - treat mission state as durable
 - treat external side effects as at-least-once unless your application code is idempotent
 
+`waitForCompletion()` rejects when a mission fails. `result()` resolves to the
+terminal mission snapshot for completed, failed, and cancelled missions.
+
 ## Runtime tick model
 
 The runtime is built around explicit ticks:
@@ -139,9 +138,11 @@ Release work for MVP is intentionally explicit and human-driven.
 
 1. Run validation: `npm run release:check`
 2. Verify package tarballs: `npm run release:pack`
-3. Ensure docs and changelog are updated for API/semantics changes.
-4. Human operators perform dependency updates, generated-file actions, and lockfile modifications.
-5. Human operators run publish commands after dry-run verification.
+3. Run the human-owned tsc publish build.
+4. Smoke-test the built tarballs in a clean consumer project on Node.js 24+.
+5. Ensure docs and changelog are updated for API/semantics changes.
+6. Before publishing, ensure internal `@mission-control/*` package dependencies resolve to exact matching published versions.
+7. Human operators perform dependency updates, generated-file actions, lockfile modifications, and publish commands.
 
 ## Non-goals for MVP
 

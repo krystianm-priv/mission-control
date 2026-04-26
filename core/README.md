@@ -57,6 +57,14 @@ What `core` does not solve by itself:
 
 When documenting or implementing adapters, treat mission recovery as restart-safe for persisted mission state, but treat user code as replayable unless the application adds its own idempotency boundary.
 
+## Completion results
+
+`waitForCompletion()` preserves the original promise-style behavior: it resolves
+for completed and cancelled missions, and rejects for failed missions.
+
+`result()` is for terminal-state inspection. It resolves to the terminal
+`MissionSnapshot` for completed, failed, and cancelled missions.
+
 ## Additive metadata
 
 `core` now lets mission definitions register additive metadata without changing the authored chain:

@@ -262,7 +262,7 @@ test("inspection APIs expose history, signals, timers, and context accumulation"
 	await clock.advanceBy(10);
 	for (
 		let attempt = 0;
-		attempt < 5 && handle.inspect().snapshot.waiting?.kind !== "signal";
+		attempt < 20 && handle.inspect().snapshot.waiting?.kind !== "signal";
 		attempt += 1
 	) {
 		await Promise.resolve();

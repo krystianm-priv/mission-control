@@ -55,41 +55,48 @@ export function serializeInspection(
 export function deserializeInspection(
 	row: SerializedInspectionRow,
 ): MissionInspection {
-	const waiting = row.waiting_kind
-		? (() => {
-				const nodeIndex = row.waiting_node_index ?? 0;
-				if (row.waiting_kind === "signal") {
+	try {
+		const waiting = row.waiting_kind
+			? (() => {
+					const nodeIndex = row.waiting_node_index ?? 0;
+					if (row.waiting_kind === "signal") {
+						return {
+							kind: "signal",
+							eventName: row.waiting_event_name ?? "",
+							nodeIndex,
+							...(row.timeout_at ? { timeoutAt: row.timeout_at } : {}),
+						} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
+					}
 					return {
-						kind: "signal",
+						kind: row.waiting_kind === "retry" ? "retry" : "timer",
 						eventName: row.waiting_event_name ?? "",
 						nodeIndex,
-						...(row.timeout_at ? { timeoutAt: row.timeout_at } : {}),
+						timerDueAt: row.timer_due_at ?? new Date(0).toISOString(),
 					} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
-				}
-				return {
-					kind: row.waiting_kind === "retry" ? "retry" : "timer",
-					eventName: row.waiting_event_name ?? "",
-					nodeIndex,
-					timerDueAt: row.timer_due_at ?? new Date(0).toISOString(),
-				} satisfies NonNullable<MissionInspection["snapshot"]["waiting"]>;
-			})()
-		: undefined;
+				})()
+			: undefined;
 
-	return {
-		snapshot: {
-			missionId: row.mission_id,
-			missionName: row.mission_name,
-			status: row.status as MissionInspection["snapshot"]["status"],
-			cursor: row.cursor,
-			error: row.error_json ? JSON.parse(row.error_json) : undefined,
-			ctx: JSON.parse(row.ctx_json) as MissionInspection["snapshot"]["ctx"],
-			waiting,
-		},
-		history: JSON.parse(row.history_json) as MissionInspection["history"],
-		stepAttempts: JSON.parse(
-			row.step_attempts_json,
-		) as MissionInspection["stepAttempts"],
-		signals: JSON.parse(row.signals_json) as MissionInspection["signals"],
-		timers: JSON.parse(row.timers_json) as MissionInspection["timers"],
-	};
+		return {
+			snapshot: {
+				missionId: row.mission_id,
+				missionName: row.mission_name,
+				status: row.status as MissionInspection["snapshot"]["status"],
+				cursor: row.cursor,
+				error: row.error_json ? JSON.parse(row.error_json) : undefined,
+				ctx: JSON.parse(row.ctx_json) as MissionInspection["snapshot"]["ctx"],
+				waiting,
+			},
+			history: JSON.parse(row.history_json) as MissionInspection["history"],
+			stepAttempts: JSON.parse(
+				row.step_attempts_json,
+			) as MissionInspection["stepAttempts"],
+			signals: JSON.parse(row.signals_json) as MissionInspection["signals"],
+			timers: JSON.parse(row.timers_json) as MissionInspection["timers"],
+		};
+	} catch (error) {
+		throw new Error(
+			`Failed to deserialize persisted mission "${row.mission_id}".`,
+			{ cause: error },
+		);
+	}
 }

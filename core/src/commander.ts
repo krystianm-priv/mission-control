@@ -12,10 +12,12 @@ import {
 	createEngineRuntime,
 	type EngineClock,
 	type EngineRuntime,
+	enqueueRuntimeOperation,
 	hydrateEngineRuntime,
 	inspectRuntime,
 	realClock,
 	recoverRuntime,
+	resultRuntime,
 	signalRuntime,
 	startRuntime,
 	waitForCompletion,
@@ -209,6 +211,10 @@ class InMemoryPersistenceAdapter implements CommanderPersistenceAdapter {
 export class ConfigurableCommander extends Commander {
 	private readonly persistence: CommanderPersistenceAdapter;
 	private readonly runtimes = new Map<string, EngineRuntime>();
+	private readonly pendingHydrations = new Map<
+		string,
+		Promise<EngineRuntime | undefined>
+	>();
 	private readonly ready: Promise<void>;
 	private initialized = false;
 	private closed = false;
@@ -265,6 +271,13 @@ export class ConfigurableCommander extends Commander {
 				`A mission with ID "${missionId}" already exists.`,
 			);
 		}
+		const existing = this.persistence.loadInspection(missionId);
+		if (!isPromiseLike(existing) && existing) {
+			throw new CommanderError(
+				"MISSION_ALREADY_EXISTS",
+				`A mission with ID "${missionId}" already exists.`,
+			);
+		}
 		const runtime = this.createPersistedRuntime(definition, missionId);
 		this.runtimes.set(missionId, runtime);
 		return this.createHandle(runtime);
@@ -280,7 +293,9 @@ export class ConfigurableCommander extends Commander {
 			typeof definitionOrName === "string"
 				? (this.getRequiredMission(definitionOrName) as M)
 				: definitionOrName;
-		const handle = this.createMission(definition, options);
+		const missionId = options.missionId ?? this.createMissionId();
+		await this.assertMissionIdAvailable(missionId);
+		const handle = this.createMission(definition, { missionId });
 		await handle.start(input);
 		return handle;
 	}
@@ -299,21 +314,10 @@ export class ConfigurableCommander extends Commander {
 			return this.createHandle(existing as EngineRuntime);
 		}
 
-		const inspection = await this.persistence.loadInspection(missionId);
-		if (!inspection) {
+		const runtime = await this.getOrHydrateRuntime(missionId);
+		if (!runtime) {
 			return undefined;
 		}
-
-		const definition = this.getRegisteredMission(
-			inspection.snapshot.missionName,
-		);
-		if (!definition) {
-			return undefined;
-		}
-
-		const runtime = this.hydratePersistedRuntime(definition, inspection);
-		this.runtimes.set(missionId, runtime);
-		await recoverRuntime(runtime);
 		return this.createHandle(runtime as EngineRuntime);
 	}
 
@@ -324,20 +328,10 @@ export class ConfigurableCommander extends Commander {
 		await this.ensureReady();
 		let runtime = this.runtimes.get(missionId);
 		if (!runtime) {
-			const inspection = await this.persistence.loadInspection(missionId);
-			if (!inspection) {
+			runtime = await this.getOrHydrateRuntime(missionId);
+			if (!runtime) {
 				throw new Error(`Mission "${missionId}" was not found.`);
 			}
-			const definition = this.getRegisteredMission(
-				inspection.snapshot.missionName,
-			);
-			if (!definition) {
-				throw new Error(
-					`Mission definition "${inspection.snapshot.missionName}" is not registered on this commander instance.`,
-				);
-			}
-			runtime = this.hydratePersistedRuntime(definition, inspection);
-			this.runtimes.set(missionId, runtime);
 		}
 		await this.persistence.requestCancellation?.(missionId, reason);
 		return cancelRuntime(runtime, reason);
@@ -377,6 +371,65 @@ export class ConfigurableCommander extends Commander {
 		if (this.closed) {
 			throw new Error("This commander instance has been closed.");
 		}
+	}
+
+	private async assertMissionIdAvailable(missionId: string): Promise<void> {
+		if (this.runtimes.has(missionId)) {
+			throw new CommanderError(
+				"MISSION_ALREADY_EXISTS",
+				`A mission with ID "${missionId}" already exists.`,
+			);
+		}
+		const persisted = await this.persistence.loadInspection(missionId);
+		if (persisted) {
+			throw new CommanderError(
+				"MISSION_ALREADY_EXISTS",
+				`A mission with ID "${missionId}" already exists.`,
+			);
+		}
+	}
+
+	private async getOrHydrateRuntime(
+		missionId: string,
+	): Promise<EngineRuntime | undefined> {
+		const existing = this.runtimes.get(missionId);
+		if (existing) {
+			return existing;
+		}
+
+		const pending = this.pendingHydrations.get(missionId);
+		if (pending) {
+			return pending;
+		}
+
+		const hydration = this.hydrateRuntimeFromPersistence(missionId);
+		this.pendingHydrations.set(missionId, hydration);
+		try {
+			return await hydration;
+		} finally {
+			this.pendingHydrations.delete(missionId);
+		}
+	}
+
+	private async hydrateRuntimeFromPersistence(
+		missionId: string,
+	): Promise<EngineRuntime | undefined> {
+		const inspection = await this.persistence.loadInspection(missionId);
+		if (!inspection) {
+			return undefined;
+		}
+
+		const definition = this.getRegisteredMission(
+			inspection.snapshot.missionName,
+		);
+		if (!definition) {
+			return undefined;
+		}
+
+		const runtime = this.hydratePersistedRuntime(definition, inspection);
+		this.runtimes.set(missionId, runtime);
+		await recoverRuntime(runtime);
+		return runtime;
 	}
 
 	private recoverPersistedRuntimes(): Promise<void> | void {
@@ -468,57 +521,71 @@ export class ConfigurableCommander extends Commander {
 			},
 			query: async (name) => {
 				await this.ensureReady();
-				const query = runtime.definition.queries.find(
-					(candidate) => candidate.name === name,
-				);
-				if (!query) {
-					throw new Error(
-						`Mission query "${name}" is not registered on "${runtime.definition.missionName}".`,
+				return enqueueRuntimeOperation(runtime, async () => {
+					const query = runtime.definition.queries.find(
+						(candidate) => candidate.name === name,
 					);
-				}
-				const inspection = inspectRuntime(runtime);
-				const output = await query.run({
-					ctx: inspection.snapshot.ctx,
-					inspection,
+					if (!query) {
+						throw new Error(
+							`Mission query "${name}" is not registered on "${runtime.definition.missionName}".`,
+						);
+					}
+					const inspection = inspectRuntime(runtime);
+					const output = await query.run({
+						ctx: inspection.snapshot.ctx,
+						inspection,
+					});
+					runtime.history.push({
+						type: "mission-query",
+						at: this.clock.now().toISOString(),
+						eventName: name,
+					});
+					await runtime.persist?.(runtime);
+					return output;
 				});
-				return output;
 			},
 			update: async (name, input) => {
 				await this.ensureReady();
-				if (
-					runtime.snapshot.status === "completed" ||
-					runtime.snapshot.status === "failed" ||
-					runtime.snapshot.status === "cancelled"
-				) {
-					throw new Error(
-						`Mission "${runtime.snapshot.missionId}" is already terminal and cannot accept updates.`,
+				return enqueueRuntimeOperation(runtime, async () => {
+					if (
+						runtime.snapshot.status === "completed" ||
+						runtime.snapshot.status === "failed" ||
+						runtime.snapshot.status === "cancelled"
+					) {
+						throw new Error(
+							`Mission "${runtime.snapshot.missionId}" is already terminal and cannot accept updates.`,
+						);
+					}
+					const update = runtime.definition.updates.find(
+						(candidate) => candidate.name === name,
 					);
-				}
-				const update = runtime.definition.updates.find(
-					(candidate) => candidate.name === name,
-				);
-				if (!update) {
-					throw new Error(
-						`Mission update "${name}" is not registered on "${runtime.definition.missionName}".`,
+					if (!update) {
+						throw new Error(
+							`Mission update "${name}" is not registered on "${runtime.definition.missionName}".`,
+						);
+					}
+					const parsedInput = parseMissionInput(
+						name,
+						update.inputSchema,
+						input,
 					);
-				}
-				const parsedInput = parseMissionInput(name, update.inputSchema, input);
-				const output = await update.run({
-					ctx: runtime.snapshot.ctx,
-					input: parsedInput,
-					inspection: inspectRuntime(runtime),
+					const output = await update.run({
+						ctx: runtime.snapshot.ctx,
+						input: parsedInput,
+						inspection: inspectRuntime(runtime),
+					});
+					runtime.snapshot.ctx.events[name] = {
+						input: parsedInput,
+						output,
+					};
+					runtime.history.push({
+						type: "mission-update",
+						at: this.clock.now().toISOString(),
+						eventName: name,
+					});
+					await runtime.persist?.(runtime);
+					return output;
 				});
-				runtime.snapshot.ctx.events[name] = {
-					input: parsedInput,
-					output,
-				};
-				runtime.history.push({
-					type: "mission-update",
-					at: this.clock.now().toISOString(),
-					eventName: name,
-				});
-				await runtime.persist?.(runtime);
-				return output;
 			},
 			cancel: async (reason) => {
 				await this.ensureReady();
@@ -532,7 +599,7 @@ export class ConfigurableCommander extends Commander {
 			getHistory: () => inspectRuntime(runtime).history,
 			result: async () => {
 				await this.ensureReady();
-				return waitForCompletion(runtime);
+				return resultRuntime(runtime);
 			},
 			waitForCompletion: async () => {
 				await this.ensureReady();

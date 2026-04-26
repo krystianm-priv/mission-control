@@ -247,6 +247,74 @@ test("SQLiteCommander exposes shared query, update, and result handle helpers", 
 	}
 });
 
+test("SQLiteCommander start rejects persisted duplicate mission ids after restart", async () => {
+	for (const status of [
+		"completed",
+		"waiting",
+		"failed",
+		"cancelled",
+	] as const) {
+		const temp = createTempDbPath();
+		try {
+			const mission = m
+				.define(`sqlite-duplicate-${status}`)
+				.start({
+					input: { parse: (input) => input as { id: string } },
+					run: async () => {
+						if (status === "failed") {
+							throw new Error("persisted failure");
+						}
+						return { ok: true };
+					},
+				})
+				.needTo("approve", {
+					parse: (input) => input as { approvedBy: string },
+				})
+				.end();
+
+			const commander1 = new SQLiteCommander({
+				databasePath: temp.path,
+				definitions: [mission],
+				createMissionId: () => `duplicate-${status}`,
+			});
+			const handle = commander1.createMission(mission);
+			if (status === "failed") {
+				await assert.rejects(
+					() => handle.start({ id: "123" }),
+					/persisted failure/,
+				);
+			} else {
+				await handle.start({ id: "123" });
+			}
+			if (status === "completed") {
+				await handle.signal("approve", { approvedBy: "ops" });
+				await handle.waitForCompletion();
+			}
+			if (status === "cancelled") {
+				await handle.cancel("duplicate test");
+			}
+			commander1.close();
+
+			const commander2 = new SQLiteCommander({
+				databasePath: temp.path,
+				definitions: [mission],
+			});
+			await assert.rejects(
+				() =>
+					commander2.start(
+						mission,
+						{ id: "new" },
+						{ missionId: `duplicate-${status}` },
+					),
+				/MISSION_ALREADY_EXISTS|already exists/,
+			);
+			commander2.close();
+		} finally {
+			rmSync(temp.dir, { recursive: true, force: true });
+		}
+	}
+});
+
 test("SQLiteCommander rejects public methods after close", async () => {
 	const temp = createTempDbPath();
 	try {

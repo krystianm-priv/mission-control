@@ -281,6 +281,68 @@ test("createCommander resumes missions through a custom persistence adapter", as
 	assert.equal(loaded.inspect().snapshot.status, "completed");
 });
 
+test("getMission hydrates one runtime for concurrent persisted lookups", async () => {
+	let loadCount = 0;
+	let releaseLoad!: () => void;
+	const loadGate = new Promise<void>((resolve) => {
+		releaseLoad = resolve;
+	});
+	const mission = m
+		.define("concurrent-hydrate")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.end();
+	const persistedInspection: MissionInspection = {
+		snapshot: {
+			missionId: "hydrate-once",
+			missionName: "concurrent-hydrate",
+			status: "waiting",
+			cursor: 1,
+			error: undefined,
+			ctx: {
+				missionId: "hydrate-once",
+				events: { start: { input: { id: "123" }, output: { id: "123" } } },
+			},
+			waiting: { kind: "signal", eventName: "approve", nodeIndex: 1 },
+		},
+		history: [{ type: "mission-created", at: new Date(0).toISOString() }],
+		stepAttempts: [],
+		signals: [],
+		timers: [],
+	};
+
+	const commander = createCommander({
+		definitions: [mission],
+		persistence: {
+			saveInspection: () => {},
+			loadInspection: async () => {
+				loadCount += 1;
+				await loadGate;
+				return structuredClone(persistedInspection);
+			},
+			listWaitingSnapshots: () => [],
+			listScheduledSnapshots: () => [],
+			listRecoverableInspections: () => [],
+		},
+	});
+
+	const first = commander.getMission<typeof mission>("hydrate-once");
+	const second = commander.getMission<typeof mission>("hydrate-once");
+	releaseLoad();
+	const [firstHandle, secondHandle] = await Promise.all([first, second]);
+
+	assert.equal(loadCount, 1);
+	assert.ok(firstHandle);
+	assert.ok(secondHandle);
+	await firstHandle.signal("approve", { approvedBy: "ops" });
+	assert.equal(secondHandle.status, "completed");
+});
+
 test("waitUntilReady allows createMission after async initialization", async () => {
 	let releaseBootstrap!: () => void;
 	const bootstrapReady = new Promise<void>((resolve) => {
@@ -369,8 +431,162 @@ test("mission handles support additive queries and updates", async () => {
 	assert.equal(
 		handle.getHistory().filter((entry) => entry.type === "mission-query")
 			.length,
-		0,
+		2,
 	);
+});
+
+test("result resolves failed snapshots while waitForCompletion rejects failures", async () => {
+	const mission = m
+		.define("result-failure")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async () => ({ ok: true }),
+		})
+		.step("fail", async () => {
+			throw new Error("boom");
+		})
+		.end();
+
+	const commander = createCommander({
+		definitions: [mission],
+		createMissionId: () => "mission-result-failed",
+	});
+
+	const handle = commander.createMission(mission);
+	await assert.rejects(() => handle.start({ id: "123" }), /boom/);
+	await assert.rejects(
+		() => handle.waitForCompletion(),
+		(error) =>
+			typeof error === "object" &&
+			error !== null &&
+			"message" in error &&
+			error.message === "boom",
+	);
+
+	const result = await handle.result?.();
+	assert.equal(result?.status, "failed");
+	assert.equal(result?.error?.message, "boom");
+});
+
+test("start rejects mission ids already present in persistence", async () => {
+	const persistence = new MemoryPersistenceAdapter();
+	const mission = m
+		.define("duplicate-durable")
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.end();
+
+	for (const status of [
+		"completed",
+		"waiting",
+		"failed",
+		"cancelled",
+	] as const) {
+		const missionId = `duplicate-${status}`;
+		persistence.saveInspection({
+			snapshot: {
+				missionId,
+				missionName: "duplicate-durable",
+				status,
+				cursor: status === "waiting" ? 1 : 2,
+				error:
+					status === "failed" || status === "cancelled"
+						? {
+								message: status,
+								at: new Date(0).toISOString(),
+								...(status === "cancelled"
+									? { code: "MISSION_CANCELLED" }
+									: {}),
+							}
+						: undefined,
+				ctx: { missionId, events: {} },
+				waiting:
+					status === "waiting"
+						? { kind: "signal", eventName: "approve", nodeIndex: 1 }
+						: undefined,
+			},
+			history: [{ type: "mission-created", at: new Date(0).toISOString() }],
+			stepAttempts: [],
+			signals: [],
+			timers: [],
+		});
+	}
+
+	const commander = createCommander({
+		definitions: [mission],
+		persistence,
+	});
+	await commander.waitUntilReady();
+
+	for (const status of [
+		"completed",
+		"waiting",
+		"failed",
+		"cancelled",
+	] as const) {
+		await assert.rejects(
+			() =>
+				commander.start(
+					mission,
+					{ id: "new" },
+					{ missionId: `duplicate-${status}` },
+				),
+			/MISSION_ALREADY_EXISTS|already exists/,
+		);
+	}
+});
+
+test("mission operations are serialized per mission", async () => {
+	let releaseUpdate!: () => void;
+	const updateGate = new Promise<void>((resolve) => {
+		releaseUpdate = resolve;
+	});
+	const events: string[] = [];
+	const mission = m
+		.define("serialized")
+		.update(
+			"annotate",
+			{ parse: (input) => input as { note: string } },
+			async ({ input }) => {
+				events.push("update-start");
+				await updateGate;
+				events.push("update-end");
+				return input.note;
+			},
+		)
+		.start({
+			input: { parse: (input) => input as { id: string } },
+			run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+		})
+		.needTo("approve", {
+			parse: (input) => input as { approvedBy: string },
+		})
+		.step("finish", async ({ ctx }) => {
+			events.push("signal-continued");
+			return { approvedBy: ctx.events.approve.input.approvedBy };
+		})
+		.end();
+
+	const commander = createCommander({ definitions: [mission] });
+	const handle = await commander.start(mission, { id: "123" });
+	const update = handle.update?.("annotate", { note: "first" });
+	for (let attempt = 0; attempt < 20 && events.length === 0; attempt += 1) {
+		await Promise.resolve();
+	}
+	const signal = handle.signal("approve", { approvedBy: "ops" });
+
+	assert.deepEqual(events, ["update-start"]);
+	releaseUpdate();
+	await update;
+	await signal;
+
+	assert.deepEqual(events, ["update-start", "update-end", "signal-continued"]);
+	assert.equal(handle.status, "completed");
 });
 
 test("mission handles and commander cancel waiting missions", async () => {

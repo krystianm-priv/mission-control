@@ -6,6 +6,7 @@ import test from "node:test";
 
 import type { MissionInspection } from "@mission-control/core";
 
+import { getSQLiteDatabaseConstructor } from "./sqlite-runtime.ts";
 import { SQLiteStore } from "./store.ts";
 
 function createTempDbPath(): { dir: string; path: string } {
@@ -48,6 +49,7 @@ test("SQLiteStore persists and reloads mission inspections", () => {
 		assert.ok(reloaded);
 		assert.equal(reloaded.snapshot.missionName, "demo");
 		assert.equal(store.listWaitingSnapshots().length, 1);
+		store.close();
 		store.close();
 	} finally {
 		rmSync(temp.dir, { recursive: true, force: true });
@@ -130,6 +132,43 @@ test("SQLiteStore exposes incomplete mission ids and start_at entries", () => {
 		]);
 
 		store.close();
+	} finally {
+		rmSync(temp.dir, { recursive: true, force: true });
+	}
+});
+
+test("SQLiteStore fails clearly when persisted JSON is corrupted", () => {
+	const temp = createTempDbPath();
+	try {
+		const store = SQLiteStore.open({ databasePath: temp.path });
+		store.saveInspection(createInspection());
+		store.close();
+
+		const Database = getSQLiteDatabaseConstructor();
+		const db = new Database(temp.path);
+		db.prepare("UPDATE mc_missions SET ctx_json = ? WHERE mission_id = ?").run(
+			"{bad json",
+			"mission-1",
+		);
+		db.close();
+
+		const corrupted = SQLiteStore.open({ databasePath: temp.path });
+		assert.throws(
+			() => corrupted.loadInspection("mission-1"),
+			/Failed to deserialize persisted mission "mission-1"/,
+		);
+		corrupted.close();
+	} finally {
+		rmSync(temp.dir, { recursive: true, force: true });
+	}
+});
+
+test("SQLiteStore rejects operations after close", () => {
+	const temp = createTempDbPath();
+	try {
+		const store = SQLiteStore.open({ databasePath: temp.path });
+		store.close();
+		assert.throws(() => store.loadInspection("mission-1"), /closed/i);
 	} finally {
 		rmSync(temp.dir, { recursive: true, force: true });
 	}

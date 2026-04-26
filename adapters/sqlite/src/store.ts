@@ -27,6 +27,7 @@ export interface SQLiteStoreOptions {
 
 export class SQLiteStore {
 	private readonly db: SQLiteDatabase;
+	private closed = false;
 
 	private constructor(_options: SQLiteStoreOptions, db: SQLiteDatabase) {
 		this.db = db;
@@ -45,10 +46,15 @@ export class SQLiteStore {
 	}
 
 	public close(): void {
+		if (this.closed) {
+			return;
+		}
+		this.closed = true;
 		this.db.close();
 	}
 
 	public saveInspection(inspection: MissionInspection): void {
+		this.ensureOpen();
 		const existing = this.db
 			.prepare("SELECT created_at FROM mc_missions WHERE mission_id = ?")
 			.get(inspection.snapshot.missionId) as { created_at: string } | undefined;
@@ -99,6 +105,7 @@ export class SQLiteStore {
 	}
 
 	public loadInspection(missionId: string): MissionInspection | undefined {
+		this.ensureOpen();
 		const row = this.db
 			.prepare("SELECT * FROM mc_missions WHERE mission_id = ?")
 			.get(missionId) as SerializedInspectionRow | undefined;
@@ -106,6 +113,7 @@ export class SQLiteStore {
 	}
 
 	public listWaitingSnapshots(): WaitingMissionSnapshot[] {
+		this.ensureOpen();
 		return (
 			this.db
 				.prepare(
@@ -118,6 +126,7 @@ export class SQLiteStore {
 	}
 
 	public listScheduledSnapshots(): ScheduledMissionSnapshot[] {
+		this.ensureOpen();
 		return (
 			this.db
 				.prepare(
@@ -130,6 +139,7 @@ export class SQLiteStore {
 	}
 
 	public listRecoverableInspections(): RecoverableMissionInspection[] {
+		this.ensureOpen();
 		return (
 			this.db
 				.prepare(
@@ -142,6 +152,7 @@ export class SQLiteStore {
 	}
 
 	public listIncompleteMissionIds(): string[] {
+		this.ensureOpen();
 		return (
 			this.db
 				.prepare(
@@ -152,6 +163,7 @@ export class SQLiteStore {
 	}
 
 	public listStartAtEntries(): Array<{ missionId: string; startAt: string }> {
+		this.ensureOpen();
 		return (
 			this.db
 				.prepare(
@@ -159,5 +171,11 @@ export class SQLiteStore {
 				)
 				.all() as Array<{ mission_id: string; timer_due_at: string }>
 		).map((row) => ({ missionId: row.mission_id, startAt: row.timer_due_at }));
+	}
+
+	private ensureOpen(): void {
+		if (this.closed) {
+			throw new Error("SQLiteStore has been closed.");
+		}
 	}
 }

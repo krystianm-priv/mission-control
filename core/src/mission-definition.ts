@@ -79,29 +79,69 @@ function assertDuration(durationMs: number) {
 	}
 }
 
-function assertDefinitionExtensionNameAvailable(
-	name: string,
-	nodes: MissionNode[],
-): void {
-	if (
-		name === "start" ||
-		nodes.some((node) => "name" in node && node.name === name)
-	) {
+function assertNameAvailable(name: string, usedNames: Set<string>): void {
+	if (usedNames.has(name)) {
 		throw new MissionDefinitionError(
-			`Mission definition name "${name}" is already in use by an existing mission event.`,
+			`Mission definition name "${name}" is already in use.`,
 		);
 	}
 }
 
-function assertMissionEventNameAvailableForUpdates(
-	name: string,
-	updates: MissionUpdateDefinition[],
-): void {
-	if (updates.some((update) => update.name === name)) {
+function collectUsedNames(args: {
+	nodes?: MissionNode[];
+	queries?: MissionQueryDefinition[];
+	updates?: MissionUpdateDefinition[];
+	schedules?: MissionScheduleDefinition[];
+}): Set<string> {
+	const usedNames = new Set<string>(["start"]);
+	for (const node of args.nodes ?? []) {
+		if ("name" in node) {
+			usedNames.add(node.name);
+		}
+	}
+	for (const query of args.queries ?? []) {
+		usedNames.add(query.name);
+	}
+	for (const update of args.updates ?? []) {
+		usedNames.add(update.name);
+	}
+	for (const schedule of args.schedules ?? []) {
+		usedNames.add(schedule.name);
+	}
+	return usedNames;
+}
+
+function assertNeedToOptions(options: NeedToOptions | undefined): void {
+	if (!options?.timeout) {
+		return;
+	}
+	if (
+		!Number.isFinite(options.timeout.afterMs) ||
+		options.timeout.afterMs < 0
+	) {
 		throw new MissionDefinitionError(
-			`Mission definition name "${name}" is already in use by an existing mission update.`,
+			"Signal timeout afterMs must be a finite non-negative number.",
 		);
 	}
+	if (options.timeout.action !== "fail") {
+		throw new MissionDefinitionError('Signal timeout action must be "fail".');
+	}
+}
+
+function assertScheduleDefinition(
+	name: string,
+	options: Omit<MissionScheduleDefinition, "name">,
+): void {
+	const hasCron =
+		typeof options.cron === "string" && options.cron.trim() !== "";
+	const hasEvery =
+		typeof options.every === "string" && options.every.trim() !== "";
+	if (hasCron === hasEvery) {
+		throw new MissionDefinitionError(
+			"Schedule definitions require exactly one of cron or every.",
+		);
+	}
+	assertNameAvailable(name, collectUsedNames({}));
 }
 
 function toStaticNode(
@@ -142,7 +182,10 @@ function makeChainBuilder<E extends EventsMap>(
 ): ChainBuilder<E> {
 	return {
 		step(eventName, run, options) {
-			assertMissionEventNameAvailableForUpdates(eventName, updates);
+			assertNameAvailable(
+				eventName,
+				collectUsedNames({ nodes, queries, updates, schedules }),
+			);
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
@@ -163,7 +206,11 @@ function makeChainBuilder<E extends EventsMap>(
 		},
 
 		needTo(eventName, inputSchema, options) {
-			assertMissionEventNameAvailableForUpdates(eventName, updates);
+			assertNameAvailable(
+				eventName,
+				collectUsedNames({ nodes, queries, updates, schedules }),
+			);
+			assertNeedToOptions(options);
 			const nextNodes: MissionNode[] = [
 				...nodes,
 				{
@@ -181,7 +228,10 @@ function makeChainBuilder<E extends EventsMap>(
 
 		sleep(eventName, durationMs) {
 			assertDuration(durationMs);
-			assertMissionEventNameAvailableForUpdates(eventName, updates);
+			assertNameAvailable(
+				eventName,
+				collectUsedNames({ nodes, queries, updates, schedules }),
+			);
 
 			const nextNodes: MissionNode[] = [
 				...nodes,
@@ -236,12 +286,18 @@ export const m = {
 
 		return {
 			query(name, run) {
+				assertNameAvailable(
+					name,
+					collectUsedNames({ queries, updates, schedules }),
+				);
 				queries.push({ name, run });
 				return this;
 			},
 			update(name, inputSchema, run) {
-				assertDefinitionExtensionNameAvailable(name, []);
-				assertMissionEventNameAvailableForUpdates(name, updates);
+				assertNameAvailable(
+					name,
+					collectUsedNames({ queries, updates, schedules }),
+				);
 				updates.push({
 					name,
 					inputSchema,
@@ -250,11 +306,11 @@ export const m = {
 				return this;
 			},
 			schedule(name, options) {
-				if (!options.cron && !options.every) {
-					throw new MissionDefinitionError(
-						"Schedule definitions require either a cron expression or an every interval.",
-					);
-				}
+				assertScheduleDefinition(name, options);
+				assertNameAvailable(
+					name,
+					collectUsedNames({ queries, updates, schedules }),
+				);
 				schedules.push({ name, ...options });
 				return this;
 			},
@@ -265,7 +321,10 @@ export const m = {
 					run: args.run as StartNode["run"],
 				};
 				for (const update of updates) {
-					assertDefinitionExtensionNameAvailable(update.name, [startNode]);
+					assertNameAvailable(
+						update.name,
+						collectUsedNames({ nodes: [startNode] }),
+					);
 				}
 
 				return makeChainBuilder<{

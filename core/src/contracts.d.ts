@@ -1,4 +1,4 @@
-import type { MissionDefinition } from "./types.d.ts";
+import type { ExternalEventNames, MissionDefinition } from "./types.d.ts";
 
 export type MissionStatus =
 	| "idle"
@@ -152,7 +152,7 @@ export interface MissionHandle<M extends MissionDefinition> {
 	readonly error: MissionSnapshot["error"];
 	readonly ctx: MissionSnapshot["ctx"];
 	start(input: M["context"]["events"]["start"]["input"]): Promise<void>;
-	signal<E extends keyof M["context"]["events"] & string>(
+	signal<E extends ExternalEventNames<M> & string>(
 		eventName: E,
 		input: M["context"]["events"][E] extends { input: infer Input }
 			? Input

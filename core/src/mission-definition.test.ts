@@ -92,3 +92,105 @@ test("mission definitions reject update names that collide with mission events",
 		MissionDefinitionError,
 	);
 });
+
+test("mission definitions reject duplicate and conflicting names across metadata and events", () => {
+	assert.throws(
+		() =>
+			m
+				.define("query-duplicate")
+				.query("status", () => "ok")
+				.query("status", () => "again"),
+		MissionDefinitionError,
+	);
+
+	assert.throws(
+		() =>
+			m
+				.define("query-step-collision")
+				.query("archive", () => "ok")
+				.start({
+					input: { parse: (input) => input as { id: string } },
+					run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+				})
+				.step("archive", async () => ({ ok: true })),
+		MissionDefinitionError,
+	);
+
+	assert.throws(
+		() =>
+			m
+				.define("schedule-update-collision")
+				.schedule("nightly", { cron: "0 0 * * *" })
+				.update(
+					"nightly",
+					{ parse: (input) => input as { id: string } },
+					({ input }) => input.id,
+				),
+		MissionDefinitionError,
+	);
+
+	assert.throws(
+		() => m.define("start-collision").query("start", () => "bad"),
+		MissionDefinitionError,
+	);
+});
+
+test("mission definitions validate schedules, retry policies, and timeouts", () => {
+	assert.throws(
+		() => m.define("empty-schedule").schedule("bad", {}),
+		MissionDefinitionError,
+	);
+	assert.throws(
+		() =>
+			m
+				.define("ambiguous-schedule")
+				.schedule("bad", { cron: "0 0 * * *", every: "1h" }),
+		MissionDefinitionError,
+	);
+	assert.throws(
+		() =>
+			m
+				.define("duplicate-schedule")
+				.schedule("nightly", { cron: "0 0 * * *" })
+				.schedule("nightly", { every: "1h" }),
+		MissionDefinitionError,
+	);
+
+	assert.throws(() =>
+		m
+			.define("bad-retry")
+			.start({
+				input: { parse: (input) => input as { id: string } },
+				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+			})
+			.step("work", async () => ({ ok: true }), {
+				retry: { maxAttempts: 0 },
+			}),
+	);
+	assert.throws(() =>
+		m
+			.define("bad-retry-delay")
+			.start({
+				input: { parse: (input) => input as { id: string } },
+				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+			})
+			.step("work", async () => ({ ok: true }), {
+				retry: { initialIntervalMs: Number.NaN },
+			}),
+	);
+	assert.throws(
+		() =>
+			m
+				.define("bad-timeout")
+				.start({
+					input: { parse: (input) => input as { id: string } },
+					run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+				})
+				.needTo(
+					"approve",
+					{ parse: (input) => input as { approvedBy: string } },
+					{ timeout: { afterMs: -1, action: "fail" } },
+				),
+		MissionDefinitionError,
+	);
+});

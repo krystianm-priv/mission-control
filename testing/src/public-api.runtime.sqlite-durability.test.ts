@@ -232,6 +232,9 @@ test(
 	"durability edge: malformed recoverable inspection should fail startup readiness",
 	{ timeout: TEST_TIMEOUT_MS },
 	async () => {
+		let savedInspection:
+			| import("@mission-control/core").MissionInspection
+			| undefined;
 		const malformedInspection = {
 			snapshot: {
 				missionId: "bad-recoverable",
@@ -258,7 +261,9 @@ test(
 			definitions: [mission],
 			persistence: {
 				bootstrap: () => {},
-				saveInspection: () => {},
+				saveInspection: (inspection) => {
+					savedInspection = inspection;
+				},
 				loadInspection: () => undefined,
 				listWaitingSnapshots: () => [],
 				listScheduledSnapshots: () => [],
@@ -270,5 +275,6 @@ test(
 			() => commander.waitUntilReady(),
 			/waiting metadata|sync|error/i,
 		);
+		assert.equal(savedInspection?.snapshot.status, "failed");
 	},
 );

@@ -50,6 +50,7 @@ export interface EngineRuntime {
 	scheduledToken: symbol | undefined;
 	persist: ((runtime: EngineRuntime) => Promise<void> | void) | undefined;
 	completion: CompletionState;
+	operationQueue: Promise<void>;
 }
 
 export interface CreateEngineRuntimeOptions {
@@ -100,6 +101,23 @@ function appendHistory(
 
 async function persistRuntime(runtime: EngineRuntime): Promise<void> {
 	await runtime.persist?.(runtime);
+}
+
+export async function enqueueRuntimeOperation<T>(
+	runtime: EngineRuntime,
+	operation: () => Promise<T> | T,
+): Promise<T> {
+	const previous = runtime.operationQueue;
+	let release!: () => void;
+	runtime.operationQueue = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	await previous;
+	try {
+		return await operation();
+	} finally {
+		release();
+	}
 }
 
 function settleCompletion(runtime: EngineRuntime): void {
@@ -176,37 +194,39 @@ async function scheduleStoredWakeup(
 
 	void runtime.clock.sleep(delayMs).then(async () => {
 		try {
-			if (runtime.scheduledToken !== token) {
-				return;
-			}
+			await enqueueRuntimeOperation(runtime, async () => {
+				if (runtime.scheduledToken !== token) {
+					return;
+				}
 
-			const timer = getLatestScheduledTimer(
-				runtime,
-				args.eventName,
-				args.kind === "retry" ? "retry" : "sleep",
-			);
-			if (timer) {
-				timer.status = "completed";
-				timer.resumedAt = runtime.clock.now().toISOString();
-			}
-			if (args.kind === "timer") {
-				runtime.snapshot.ctx.events[args.eventName] = {
-					output: {
-						scheduledAt:
-							timer?.scheduledAt ?? runtime.clock.now().toISOString(),
-						dueAt: timer?.dueAt ?? args.dueAt,
-						resumedAt: timer?.resumedAt ?? runtime.clock.now().toISOString(),
-					},
-				};
-			}
-			appendHistory(runtime, {
-				type: "timer-fired",
-				at: timer?.resumedAt ?? runtime.clock.now().toISOString(),
-				eventName: args.eventName,
+				const timer = getLatestScheduledTimer(
+					runtime,
+					args.eventName,
+					args.kind === "retry" ? "retry" : "sleep",
+				);
+				if (timer) {
+					timer.status = "completed";
+					timer.resumedAt = runtime.clock.now().toISOString();
+				}
+				if (args.kind === "timer") {
+					runtime.snapshot.ctx.events[args.eventName] = {
+						output: {
+							scheduledAt:
+								timer?.scheduledAt ?? runtime.clock.now().toISOString(),
+							dueAt: timer?.dueAt ?? args.dueAt,
+							resumedAt: timer?.resumedAt ?? runtime.clock.now().toISOString(),
+						},
+					};
+				}
+				appendHistory(runtime, {
+					type: "timer-fired",
+					at: timer?.resumedAt ?? runtime.clock.now().toISOString(),
+					eventName: args.eventName,
+				});
+				runtime.snapshot.waiting = undefined;
+				await persistRuntime(runtime);
+				await args.onWake();
 			});
-			runtime.snapshot.waiting = undefined;
-			await persistRuntime(runtime);
-			await args.onWake();
 		} catch (error) {
 			await setFailure(runtime, error);
 		}
@@ -340,16 +360,18 @@ async function scheduleNeedToTimeout(
 			),
 		)
 		.then(async () => {
-			if (runtime.scheduledToken !== token) {
-				return;
-			}
-			await setFailure(
-				runtime,
-				new MissionSignalError(
-					node.timeout?.errorMessage ??
-						`Timed out waiting for signal "${node.name}".`,
-				),
-			);
+			await enqueueRuntimeOperation(runtime, async () => {
+				if (runtime.scheduledToken !== token) {
+					return;
+				}
+				await setFailure(
+					runtime,
+					new MissionSignalError(
+						node.timeout?.errorMessage ??
+							`Timed out waiting for signal "${node.name}".`,
+					),
+				);
+			});
 		});
 }
 
@@ -502,6 +524,7 @@ export function createEngineRuntime(
 		scheduledToken: undefined,
 		persist: options.persist,
 		completion: createCompletionState(),
+		operationQueue: Promise.resolve(),
 	};
 }
 
@@ -522,13 +545,14 @@ export function hydrateEngineRuntime(
 		scheduledToken: undefined,
 		persist: options.persist,
 		completion: createCompletionState(),
+		operationQueue: Promise.resolve(),
 	};
 
 	settleCompletion(runtime);
 	return runtime;
 }
 
-export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
+async function recoverRuntimeUnlocked(runtime: EngineRuntime): Promise<void> {
 	const waiting = runtime.snapshot.waiting;
 	if (!waiting) {
 		if (runtime.snapshot.status === "waiting") {
@@ -610,7 +634,18 @@ export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
 	});
 }
 
-export async function startRuntime(
+export async function recoverRuntime(runtime: EngineRuntime): Promise<void> {
+	await enqueueRuntimeOperation(runtime, async () => {
+		try {
+			await recoverRuntimeUnlocked(runtime);
+		} catch (error) {
+			await setFailure(runtime, error);
+			throw error;
+		}
+	});
+}
+
+async function startRuntimeUnlocked(
 	runtime: EngineRuntime,
 	input: unknown,
 ): Promise<void> {
@@ -647,7 +682,16 @@ export async function startRuntime(
 	}
 }
 
-export async function signalRuntime(
+export async function startRuntime(
+	runtime: EngineRuntime,
+	input: unknown,
+): Promise<void> {
+	await enqueueRuntimeOperation(runtime, () =>
+		startRuntimeUnlocked(runtime, input),
+	);
+}
+
+async function signalRuntimeUnlocked(
 	runtime: EngineRuntime,
 	eventName: string,
 	input: unknown,
@@ -705,7 +749,17 @@ export async function signalRuntime(
 	}
 }
 
-export async function cancelRuntime(
+export async function signalRuntime(
+	runtime: EngineRuntime,
+	eventName: string,
+	input: unknown,
+): Promise<void> {
+	await enqueueRuntimeOperation(runtime, () =>
+		signalRuntimeUnlocked(runtime, eventName, input),
+	);
+}
+
+async function cancelRuntimeUnlocked(
 	runtime: EngineRuntime,
 	reason = "Mission cancelled.",
 ): Promise<MissionSnapshot> {
@@ -747,6 +801,15 @@ export async function cancelRuntime(
 	return structuredClone(runtime.snapshot);
 }
 
+export async function cancelRuntime(
+	runtime: EngineRuntime,
+	reason = "Mission cancelled.",
+): Promise<MissionSnapshot> {
+	return enqueueRuntimeOperation(runtime, () =>
+		cancelRuntimeUnlocked(runtime, reason),
+	);
+}
+
 export function inspectRuntime(runtime: EngineRuntime): MissionInspection {
 	return {
 		snapshot: structuredClone(runtime.snapshot),
@@ -763,4 +826,15 @@ export function waitForCompletion(
 	return runtime.completion.promise.then((snapshot) =>
 		structuredClone(snapshot),
 	);
+}
+
+export async function resultRuntime(
+	runtime: EngineRuntime,
+): Promise<MissionSnapshot> {
+	try {
+		await runtime.completion.promise;
+	} catch {
+		// result() resolves failed missions to their terminal snapshot.
+	}
+	return structuredClone(runtime.snapshot);
 }

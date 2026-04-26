@@ -93,6 +93,8 @@ const compileTimeAssertions = () => {
 
 	// @ts-expect-error invalid signal event name should fail type checking
 	void handle.signal("confirm", { token: "x" });
+	// @ts-expect-error start is not an external signal event
+	void handle.signal("start", { orderId: "o-1", amount: 100 });
 	// @ts-expect-error invalid signal payload field type should fail
 	void handle.signal("approve", { approvedBy: 123 });
 	// @ts-expect-error missing required signal payload field should fail
