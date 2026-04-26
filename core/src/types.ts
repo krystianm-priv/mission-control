@@ -1,7 +1,7 @@
 import type { RetryPolicy } from "./retry-policy.ts";
 import type { AnyInputSchema, iInferInput } from "./schema.ts";
 import type { NeedToOptions, SleepResult } from "./timer.ts";
-import type { MissionInspection } from "./contracts.d.ts";
+import type { MissionInspection } from "./contracts.ts";
 
 export interface EventRecord {
 	input?: unknown;

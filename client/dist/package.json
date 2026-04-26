@@ -1,0 +1,26 @@
+{
+	"name": "@mission-control/client",
+	"version": "1.0.0-rc.1",
+	"description": "Mission-native client helpers for Mission Control runtimes.",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": ">=24"
+	},
+	"engineStrict": true,
+	"main": "./index.js",
+	"types": "./index.d.ts",
+	"exports": {
+		".": {
+			"import": "./index.js",
+			"types": "./index.d.ts"
+		}
+	},
+	"files": [
+		"**/*"
+	],
+	"dependencies": {
+		"@mission-control/core": "1.0.0-rc.1",
+		"@mission-control/runtime": "1.0.0-rc.1"
+	}
+}

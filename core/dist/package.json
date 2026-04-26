@@ -1,0 +1,22 @@
+{
+    "name": "@mission-control/core",
+    "version": "1.0.0-rc.1",
+    "description": "Typed mission definition DSL and shared runtime validation for Mission Control.",
+    "type": "module",
+    "license": "MIT",
+    "engines": {
+        "node": ">=24"
+    },
+    "engineStrict": true,
+    "main": "./index.js",
+    "types": "./index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./index.js",
+            "types": "./index.d.ts"
+        }
+    },
+    "files": [
+        "**/*"
+    ]
+}

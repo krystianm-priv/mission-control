@@ -18,7 +18,7 @@ import type {
 	SleepEventRecord,
 	StartNode,
 	StepNode,
-} from "./types.d.ts";
+} from "./types.ts";
 
 type ChainBuilder<E extends EventsMap> = {
 	step<EventName extends string, Output extends object>(
@@ -50,7 +50,7 @@ type DefineBuilder<_Name extends string> = {
 		run: (args: {
 			ctx: MissionContext;
 			input: iInferInput<S>;
-			inspection: import("./contracts.d.ts").MissionInspection;
+			inspection: import("./contracts.ts").MissionInspection;
 		}) => Promise<unknown> | unknown,
 	): DefineBuilder<_Name>;
 

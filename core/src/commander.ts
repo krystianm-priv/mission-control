@@ -6,7 +6,7 @@ import type {
 	RecoverableMissionInspection,
 	ScheduledMissionSnapshot,
 	WaitingMissionSnapshot,
-} from "./contracts.d.ts";
+} from "./contracts.ts";
 import {
 	cancelRuntime,
 	createEngineRuntime,
@@ -24,7 +24,7 @@ import {
 } from "./engine.ts";
 import { CommanderError } from "./errors.ts";
 import { parseMissionInput } from "./schema.ts";
-import type { MissionDefinition } from "./types.d.ts";
+import type { MissionDefinition } from "./types.ts";
 
 export interface CommanderOptions {
 	clock?: EngineClock;

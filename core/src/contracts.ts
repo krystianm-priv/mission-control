@@ -1,4 +1,4 @@
-import type { ExternalEventNames, MissionDefinition } from "./types.d.ts";
+import type { ExternalEventNames, MissionDefinition } from "./types.ts";
 
 export type MissionStatus =
 	| "idle"

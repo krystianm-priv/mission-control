@@ -1,0 +1,25 @@
+{
+	"name": "@mission-control/adapter-sqlite",
+	"version": "1.0.0-rc.1",
+	"description": "SQLite-backed durable adapter for Mission Control.",
+	"type": "module",
+	"license": "MIT",
+	"engines": {
+		"node": ">=24"
+	},
+	"engineStrict": true,
+	"main": "./index.js",
+	"types": "./index.d.ts",
+	"exports": {
+		".": {
+			"import": "./index.js",
+			"types": "./index.d.ts"
+		}
+	},
+	"files": [
+		"**/*"
+	],
+	"dependencies": {
+		"@mission-control/core": "1.0.0-rc.1"
+	}
+}

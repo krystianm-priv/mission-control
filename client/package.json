@@ -20,5 +20,9 @@
 	"dependencies": {
 		"@mission-control/core": "*",
 		"@mission-control/runtime": "*"
+	},
+	"scripts": {
+		"prebuild": "git clean -fdX",
+		"build": "tsc -p tsconfig.build.json"
 	}
 }

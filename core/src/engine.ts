@@ -5,7 +5,7 @@ import type {
 	SignalRecord,
 	StepAttemptRecord,
 	TimerRecord,
-} from "./contracts.d.ts";
+} from "./contracts.ts";
 import {
 	MissionAlreadyStartedError,
 	MissionExecutionError,
@@ -19,7 +19,7 @@ import type {
 	NeedToNode,
 	SleepNode,
 	StepNode,
-} from "./types.d.ts";
+} from "./types.ts";
 
 export interface EngineClock {
 	now(): Date;

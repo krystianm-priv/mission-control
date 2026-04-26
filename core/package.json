@@ -19,5 +19,9 @@
 	],
 	"devDependencies": {
 		"@types/node": "^24"
+	},
+	"scripts": {
+		"prebuild": "git clean -fdX",
+		"build": "tsc -p tsconfig.build.json"
 	}
 }
