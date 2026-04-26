@@ -20,9 +20,9 @@ import {
 	startRuntime,
 	waitForCompletion,
 } from "./engine.ts";
+import { CommanderError } from "./errors.ts";
 import { parseMissionInput } from "./schema.ts";
 import type { MissionDefinition } from "./types.d.ts";
-import { CommanderError } from "./errors.ts";
 
 export interface CommanderOptions {
 	clock?: EngineClock;

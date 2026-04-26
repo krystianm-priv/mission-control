@@ -20,6 +20,9 @@ await runtime.start();
 runtime.setNextTickIn(10 * 60 * 1000);
 ```
 
+SQLite-backed runtime persistence is currently preview because it depends on
+Node's built-in `node:sqlite` module, which is not a Stability 2 API yet.
+
 Runtime behavior summary:
 
 - startup runs an initial tick to check incomplete work

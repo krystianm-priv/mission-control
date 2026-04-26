@@ -1,21 +1,24 @@
+import { createSqlitePersistenceAdapter } from "@mission-control/adapter-sqlite";
 import {
-	SQLiteCommander,
-	type SQLiteCommanderOptions,
-} from "@mission-control/adapter-sqlite";
+	type CreateCommanderOptions,
+	createCommander,
+} from "@mission-control/core";
 
 import { durableReminderMission } from "./mission-definition.ts";
 
 export interface CreateDurableReminderCommanderOptions
-	extends Omit<SQLiteCommanderOptions, "definitions"> {
+	extends Omit<CreateCommanderOptions, "definitions" | "persistence"> {
 	databasePath: string;
 }
 
 export function createDurableReminderCommander(
 	options: CreateDurableReminderCommanderOptions,
 ) {
-	const commanderOptions: SQLiteCommanderOptions = {
+	const commanderOptions: CreateCommanderOptions = {
 		definitions: [durableReminderMission],
-		databasePath: options.databasePath,
+		persistence: createSqlitePersistenceAdapter({
+			databasePath: options.databasePath,
+		}),
 	};
 
 	if (options.clock) {
@@ -26,5 +29,5 @@ export function createDurableReminderCommander(
 		commanderOptions.createMissionId = options.createMissionId;
 	}
 
-	return new SQLiteCommander(commanderOptions);
+	return createCommander(commanderOptions);
 }

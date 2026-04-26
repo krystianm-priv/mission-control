@@ -26,7 +26,6 @@
 		"runtime",
 		"client",
 		"testing",
-		"cli",
 		"adapters/*",
 		"examples/*"
 	]

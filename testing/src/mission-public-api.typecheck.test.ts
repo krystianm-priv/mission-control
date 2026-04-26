@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-	type MissionHandle,
-	createCommander,
-	m,
-} from "@mission-control/core";
+import { createCommander, type MissionHandle, m } from "@mission-control/core";
 
 const expectType = <T>(_value: T): void => {};
 
@@ -61,8 +57,7 @@ const checkoutMission = m
 const compileTimeAssertions = () => {
 	expectType<string>(checkoutMission.missionName);
 
-	type ApproveInput =
-		typeof checkoutMission.context.events.approve.input;
+	type ApproveInput = typeof checkoutMission.context.events.approve.input;
 	const validApproveInput: ApproveInput = { approvedBy: "ops" };
 	expectType<{ approvedBy: string }>(validApproveInput);
 
@@ -74,9 +69,7 @@ const compileTimeAssertions = () => {
 	const createHandle = commander.createMission(checkoutMission);
 	expectType<MissionHandle<typeof checkoutMission>>(createHandle);
 
-	expectType<Promise<void>>(
-		createHandle.start({ orderId: "o-2", amount: 25 }),
-	);
+	expectType<Promise<void>>(createHandle.start({ orderId: "o-2", amount: 25 }));
 	expectType<Promise<void>>(
 		createHandle.signal("approve", { approvedBy: "operator" }),
 	);
@@ -85,9 +78,7 @@ const compileTimeAssertions = () => {
 		orderId: "o-3",
 		amount: 30,
 	});
-	expectType<Promise<MissionHandle<typeof checkoutMission>>>(
-		startByDefinition,
-	);
+	expectType<Promise<MissionHandle<typeof checkoutMission>>>(startByDefinition);
 
 	const startByName = commander.start<typeof checkoutMission>("checkout", {
 		orderId: "o-4",
@@ -122,9 +113,8 @@ test("typed mission handles preserve runtime behavior for start/get/signal", asy
 	});
 	await handle.start({ orderId: "order-123", amount: 99 });
 
-	const retrieved = await commander.getMission<typeof checkoutMission>(
-		"typed-get-1",
-	);
+	const retrieved =
+		await commander.getMission<typeof checkoutMission>("typed-get-1");
 	assert.ok(retrieved);
 	if (!retrieved) {
 		assert.fail("Expected mission handle to be retrievable.");
@@ -134,10 +124,13 @@ test("typed mission handles preserve runtime behavior for start/get/signal", asy
 	const snapshot = await retrieved.waitForCompletion();
 
 	assert.equal(snapshot.status, "completed");
-	assert.deepEqual(retrieved.inspect().snapshot.ctx.events["finalize"]?.output, {
-		approvedBy: "ops",
-		amount: 99,
-	});
+	assert.deepEqual(
+		retrieved.inspect().snapshot.ctx.events["finalize"]?.output,
+		{
+			approvedBy: "ops",
+			amount: 99,
+		},
+	);
 
 	const direct = await commander.start(checkoutMission, {
 		orderId: "order-456",

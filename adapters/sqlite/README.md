@@ -2,35 +2,37 @@
 
 `@mission-control/adapter-sqlite` is the SQLite-backed durable adapter package.
 
-It is one of the supported MVP adapters for Mission Control v1.
+It is a preview MVP adapter because it relies on Node's built-in `node:sqlite`
+module, which is not a Stability 2 Node.js API yet.
 
 It provides:
 
-- `SQLiteCommander`
 - `createSqlitePersistenceAdapter`
-- SQLite schema bootstrap and migration `0001_init`
+- `SQLiteCommander` as a compatibility convenience wrapper over the shared commander path
 - durable persistence for mission state, history, attempts, signals, and timers
 - restart-safe resume for waiting signals, sleep timers, and retry backoff
 
 ## Requirement
 
-This package relies on Node's built-in SQLite module (`node:sqlite`) on Node.js 24+.
+This package relies on Node's built-in SQLite module (`node:sqlite`) on Node.js
+24+. Treat the SQLite backend as preview infrastructure until Node marks
+`node:sqlite` stable.
 
 ## Example
 
 ```ts
-import { join } from "node:path";
-
-import { SQLiteCommander } from "@mission-control/adapter-sqlite";
+import { createSqlitePersistenceAdapter } from "@mission-control/adapter-sqlite";
+import { createCommander } from "@mission-control/core";
 import { reminderMission } from "./reminder-mission.ts";
 
-const commander = new SQLiteCommander({
-	databasePath: join(process.cwd(), "missions.sqlite"),
+const commander = createCommander({
+	persistence: createSqlitePersistenceAdapter({
+		databasePath: "./missions.sqlite",
+	}),
 	definitions: [reminderMission],
 });
 
-const mission = commander.createMission(reminderMission);
-await mission.start({
+const mission = await commander.start(reminderMission, {
 	recipient: "hello@example.com",
 	message: "Persist me",
 });
@@ -55,6 +57,8 @@ runtime.setNextTickIn(5_000);
 
 ## Notes
 
+- Prefer `createSqlitePersistenceAdapter(...)` with `createCommander(...)` or `createCommanderRuntime(...)` for new code.
+- `SQLiteCommander` is retained for compatibility and delegates to the same shared commander implementation.
 - This adapter persists recoverable mission state, but it does not upgrade user-defined side effects to exactly-once execution.
 - If an app crashes after an external side effect but before the next inspection save, replay or retry may re-enter user code after reload.
 - It persists mission state and recovery coordination, but external side effects remain at-least-once unless your application code is idempotent.

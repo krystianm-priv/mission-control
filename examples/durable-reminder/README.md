@@ -1,10 +1,10 @@
 # durable-reminder example
 
-This example demonstrates a durable reminder workflow using sqlite persistence.
+This example demonstrates a durable reminder workflow using SQLite persistence.
 
 What it covers:
 
-- durable mission snapshot persistence via `@mission-control/adapter-sqlite`
+- durable mission snapshot persistence via `createSqlitePersistenceAdapter(...)`
 - waiting/sleep behavior and wake-up continuation
 - restart-safe mission progression
 

@@ -1,6 +1,6 @@
 # Mission Control
 
-Mission Control is a TypeScript workflow / mission runtime for long-lived application flows.
+Mission Control is a Node.js 24+ TypeScript workflow / mission runtime for long-lived application flows.
 
 It targets a focused MVP with:
 
@@ -8,16 +8,21 @@ It targets a focused MVP with:
 - durable mission inspection state
 - explicit waits, retries, timers, and signals
 - single-instance runtime orchestration through ticks
-- two supported adapters: in-memory and sqlite
+- an in-memory adapter and a SQLite preview adapter
 
 ## Current status
 
 Mission Control MVP is intentionally narrow:
 
-- supported adapters: `@mission-control/in-memory-commander`, `@mission-control/adapter-sqlite`
+- available adapters: `@mission-control/in-memory-commander`, `@mission-control/adapter-sqlite`
 - runtime model: single-instance, tick-driven
 - side-effect model: at-least-once unless application code provides idempotency
-- operator CLI: currently unsupported for MVP
+- source-first packages that run TypeScript directly on Node.js 24+
+
+`@mission-control/adapter-sqlite` is a preview durable adapter because it relies
+on Node's built-in `node:sqlite` module, which is not a Stability 2 API yet.
+The adapter is included for durable MVP usage, but its backend should be treated
+as release-candidate infrastructure until Node marks SQLite stable.
 
 ## MVP package status
 
@@ -28,8 +33,7 @@ Mission Control MVP is intentionally narrow:
 | `@mission-control/client` | Supported | Runtime-owned mission client helpers |
 | `@mission-control/testing` | Supported | Shared testing helpers |
 | `@mission-control/in-memory-commander` | Supported | Local/in-memory adapter surface |
-| `@mission-control/adapter-sqlite` | Supported | Durable sqlite adapter surface |
-| `@mission-control/cli` | Unsupported/private | Placeholder only in MVP |
+| `@mission-control/adapter-sqlite` | Preview | Durable SQLite adapter surface backed by `node:sqlite` |
 | `examples/*` | Private examples | Reference usage patterns, not published APIs |
 
 ## Repository architecture
@@ -64,6 +68,10 @@ Owns:
 - durable recovery behavior for waits and retries
 - backend-specific tests
 
+The primary integration path is `createSqlitePersistenceAdapter(...)` with
+`createCommander(...)` or `createCommanderRuntime(...)`. `SQLiteCommander` is
+kept as a compatibility convenience wrapper over the same shared commander path.
+
 ### `@mission-control/runtime`
 
 Owns:
@@ -77,7 +85,6 @@ Owns:
 
 - `@mission-control/client`: mission-native client helpers
 - `@mission-control/testing`: shared test helpers
-- `@mission-control/cli`: retained as private unsupported placeholder package
 
 ## Execution semantics
 

@@ -180,6 +180,73 @@ test("SQLiteCommander resumes retry backoff after reload", async () => {
 	}
 });
 
+test("SQLiteCommander exposes shared query, update, and result handle helpers", async () => {
+	const temp = createTempDbPath();
+	try {
+		const mission = m
+			.define("sqlite-handle-helpers")
+			.query("summary", ({ ctx }) => ({
+				missionId: ctx.missionId,
+				start: ctx.events["start"]?.output,
+			}))
+			.update(
+				"annotate",
+				{
+					parse: (input) => input as { tag: string },
+				},
+				({ input }) => ({ tag: input.tag }),
+			)
+			.start({
+				input: {
+					parse: (input) => input as { id: string },
+				},
+				run: async ({ ctx }) => ({ id: ctx.events.start.input.id }),
+			})
+			.needTo("approve", {
+				parse: (input) => input as { approvedBy: string },
+			})
+			.step("finish", async ({ ctx }) => {
+				const annotation = (ctx.events as Record<string, { output?: unknown }>)[
+					"annotate"
+				]?.output as { tag?: string } | undefined;
+				return {
+					id: ctx.events.start.output.id,
+					tag: annotation?.tag,
+					approvedBy: ctx.events.approve.input.approvedBy,
+				};
+			})
+			.end();
+
+		const commander = new SQLiteCommander({
+			databasePath: temp.path,
+			definitions: [mission],
+			createMissionId: () => "mission-helpers",
+		});
+		const handle = await commander.start(mission, { id: "123" });
+
+		assert.deepEqual(await handle.query?.("summary"), {
+			missionId: "mission-helpers",
+			start: { id: "123" },
+		});
+		assert.deepEqual(await handle.update?.("annotate", { tag: "stable" }), {
+			tag: "stable",
+		});
+
+		await handle.signal("approve", { approvedBy: "ops" });
+		const result = await handle.result?.();
+
+		assert.equal(result?.status, "completed");
+		assert.deepEqual(handle.inspect().snapshot.ctx.events["finish"]?.output, {
+			id: "123",
+			tag: "stable",
+			approvedBy: "ops",
+		});
+		commander.close();
+	} finally {
+		rmSync(temp.dir, { recursive: true, force: true });
+	}
+});
+
 test("SQLiteCommander rejects public methods after close", async () => {
 	const temp = createTempDbPath();
 	try {

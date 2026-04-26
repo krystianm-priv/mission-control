@@ -36,7 +36,7 @@ Expected semantics:
 - `close()` is optional synchronous cleanup for backend resources owned by the adapter
 
 The commander does not require a query builder, ORM, queue, or leasing protocol.
-For the current runtime, adapters are expected to support recovery semantics that match the in-memory runtime. Durable adapters can additionally expose task claiming, lease, and cancellation primitives used by `@mission-control/runtime`.
+For the current runtime, adapters are expected to support recovery semantics that match the in-memory runtime. Durable adapters can additionally expose incomplete-mission and start-at listing helpers used by `@mission-control/runtime`.
 If an adapter initializes asynchronously, `start(...)` waits for readiness automatically and `waitUntilReady()` is available before calling `createMission(...)` directly.
 
 ## Recovery and side effects

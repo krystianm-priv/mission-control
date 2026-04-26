@@ -4,8 +4,7 @@ import type { MissionDefinition, MissionHandle } from "@mission-control/core";
 import { createCommander, m } from "@mission-control/core";
 
 type Equal<A, B> =
-	(<T>() => T extends A ? 1 : 2) extends
-		(<T>() => T extends B ? 1 : 2)
+	(<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
 		? true
 		: false;
 type Expect<T extends true> = T;
@@ -18,7 +17,10 @@ const missionAlpha = m
 		input: {
 			parse: (input) => {
 				const value = input as { orderId?: unknown; amount?: unknown };
-				if (typeof value.orderId !== "string" || typeof value.amount !== "number") {
+				if (
+					typeof value.orderId !== "string" ||
+					typeof value.amount !== "number"
+				) {
 					throw new Error("Invalid alpha start input.");
 				}
 				return { orderId: value.orderId, amount: value.amount };
@@ -63,7 +65,9 @@ const missionBeta = m
 	.end();
 
 const compileTimeAssertions = () => {
-	const commander = createCommander({ definitions: [missionAlpha, missionBeta] });
+	const commander = createCommander({
+		definitions: [missionAlpha, missionBeta],
+	});
 
 	type _StartInputInference = Expect<
 		Equal<
@@ -102,7 +106,9 @@ const compileTimeAssertions = () => {
 		orderId: "o-3",
 		amount: 33,
 	});
-	expectType<Promise<MissionHandle<typeof missionAlpha>>>(typedStartByDefinition);
+	expectType<Promise<MissionHandle<typeof missionAlpha>>>(
+		typedStartByDefinition,
+	);
 
 	const typedStartByName = commander.start<typeof missionAlpha>("alpha", {
 		orderId: "o-4",
@@ -115,12 +121,16 @@ const compileTimeAssertions = () => {
 	// generic API redesign. Unregistered names fail at runtime, not compile time.
 
 	const loadedAlpha = commander.getMission<typeof missionAlpha>("alpha-id");
-	expectType<Promise<MissionHandle<typeof missionAlpha> | undefined>>(loadedAlpha);
+	expectType<Promise<MissionHandle<typeof missionAlpha> | undefined>>(
+		loadedAlpha,
+	);
 
 	// Adversarial expectation for public ergonomics:
 	// getMission without explicit generic should ideally preserve mission-specific typing.
 	const loadedUnknown = commander.getMission("alpha-id");
-	expectType<Promise<MissionHandle<MissionDefinition> | undefined>>(loadedUnknown);
+	expectType<Promise<MissionHandle<MissionDefinition> | undefined>>(
+		loadedUnknown,
+	);
 };
 
 void compileTimeAssertions;
